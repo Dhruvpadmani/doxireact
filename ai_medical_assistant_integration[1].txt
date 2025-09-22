@@ -1,0 +1,79 @@
+# AI Medical Assistant Integration in Doctor Online Appointment System
+
+---
+
+## 1. Role of AI vs Doctor
+The AI assistant is designed to support patients with general information, symptom collection, appointment scheduling, and reminders. **Doctors remain the final authority** for diagnosis, prescriptions, and treatment decisions. AI is an assistant, not a replacement for doctors.
+
+---
+
+## 2. Rules & Conditions
+
+### ✅ Allowed (AI Can Do):
+- Answer general health questions (e.g., *What is diabetes?*).
+- Explain common symptoms (e.g., fever causes).
+- Provide preventive health tips (diet, exercise).
+- Help in appointment booking (suggest time slots, book/cancel/reschedule).
+- Send reminders & notifications (appointments, medicines).
+- Act as a FAQ bot (hospital timings, payment options).
+- Collect patient symptoms & create summary report for doctor.
+- Detect keywords for emergencies and advise hospital visit.
+- Suggest which specialist doctor to consult.
+- Always display disclaimer.
+
+### ❌ Not Allowed (AI Cannot Do):
+- Prescribe medicines.
+- Declare final diagnosis.
+- Recommend treatment plans without doctor approval.
+- Handle emergencies alone (must escalate).
+- Store/share patient data without doctor’s approval.
+- Replace doctor consultation in legal/medical matters.
+
+---
+
+## 3. Workflow of AI + Doctor Interaction
+1. Patient asks question → AI checks if general or medical-sensitive.  
+2. If **general** → AI gives response directly.  
+3. If **medical-sensitive** → AI marks it as *Pending Doctor Approval*.  
+4. Doctor reviews AI draft, approves or edits.  
+5. Final advice/prescription always comes from doctor.  
+
+---
+
+## 4. Database Integration Example
+**Table: ai_chats**
+- chat_id (Primary Key)  
+- patient_id (Foreign Key)  
+- question (Patient's query)  
+- ai_response (AI's reply)  
+- status (general, pending_doctor, resolved)  
+- created_at (Timestamp)  
+
+---
+
+## 5. Example Scenarios
+- **Patient:** *What are symptoms of flu?* → **AI:** Explains common flu symptoms ✅  
+- **Patient:** *Which medicine should I take for chest pain?* → **AI:** Emergency warning & alert doctor 🚨  
+- **Patient:** *Book appointment with Dr. Patel tomorrow evening.* → **AI:** Books appointment 📅  
+
+---
+
+## 6. Emergency Handling
+If patient mentions keywords such as **chest pain, accident, or severe bleeding**, AI will:
+- Immediately advise hospital visit.  
+- Notify the doctor.  
+
+This ensures patient safety and compliance with real-world healthcare practices.
+
+---
+
+## 7. Why Doctor is Still Important
+- Prescriptions can only be given by licensed doctors.  
+- Legal responsibility for diagnosis lies with doctors.  
+- Accurate diagnosis requires human expertise.  
+- Patients trust doctors more than automated systems.  
+
+---
+
+## Disclaimer
+This AI assistant provides **general health guidance only**. It does not replace professional medical advice. Always consult a licensed doctor for diagnosis, prescriptions, or treatment.

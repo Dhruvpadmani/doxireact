@@ -1,0 +1,105 @@
+# Demo Project Scope – Doctor Appointment Booking System
+
+This document describes the final project requirements and plan for the **Doctor Appointment Booking System**. It contains modules for each panel (**Patient, Doctor, Admin**) along with their functionalities, workflows, and database tables.
+
+---
+
+## 1. Patient Panel Modules
+
+### Modules & Work
+- **Dashboard**: Displays quick summary of patient profile – today’s appointments, upcoming/past appointments, prescription alerts, AI health tips, and notifications.
+- **Appointment**: Manage appointments with four filters: Book New, Today, Upcoming, Past.
+- **Chatboard**: Direct communication between patient and doctor.
+- **Medical Assistance (AI)**: AI chatbot that helps with basic queries like symptoms, first-aid suggestions, or general health info.
+- **Prescription**: Contains patient ID, prescribed medicines, disease, dosage. Actions: View, Download, Delete.
+- **Find Doctor**: Search and view doctor profiles including name, degrees, years of experience, specialization, clinic location, availability, and redirect to doctor’s calendar.
+- **Availability**: Real-time doctor slot checking.
+- **Review & Rating**: Patients give feedback via ratings and comments.
+- **Medical History**: View past treatments, surgeries, uploaded reports, prescriptions, and notes.
+
+### Database Tables
+- **patient_profiles**: patient_id (PK, FK users), age, gender, contact_number, address, blood_group
+- **appointments**: appointment_id (PK), patient_id (FK), doctor_id (FK), date, time_slot, status
+- **chats**: chat_id (PK), sender_id (FK users), receiver_id (FK users), message_text, sent_at
+- **ai_queries**: query_id (PK), patient_id (FK), query_text, response_text, asked_at
+- **prescriptions**: prescription_id (PK), patient_id (FK), doctor_id (FK), appointment_id (FK), disease, medicine_name, dosage, duration
+- **reports**: report_id (PK), patient_id (FK), uploaded_by (doctor/patient), file_path, uploaded_at
+- **medical_history**: history_id (PK), patient_id (FK), doctor_id (FK), description, created_at
+- **reviews**: review_id (PK), patient_id (FK), doctor_id (FK), rating, comment, created_at
+
+---
+
+## 2. Doctor Panel Modules
+
+### Modules & Work
+- **Dashboard**: Shows overview – today’s schedule, upcoming appointments, pending approvals, patient count, and recent reviews.
+- **Appointments**: Doctors can view requests (Today, Upcoming, Past). Can Approve/Reject requests and mark appointments as completed.
+- **Patient List**: Displays assigned patients. Doctors can view profiles, medical history, and contact details.
+- **Calendar**: Manage schedules, define slots, set availability, and mark time-offs.
+- **Chats / Messages**: Communication with patients.
+- **Review & Rating**: Doctors view patient feedback.
+- **Reports**: Upload/view/manage medical reports (lab results, diagnosis).
+
+### Database Tables
+- **doctor_profiles**: doctor_id (PK, FK users), specialization, experience_years, bio, contact_info
+- **appointments**: appointment_id (PK), doctor_id (FK), patient_id (FK), date, time_slot, status
+- **availability**: availability_id (PK), doctor_id (FK), date, time_slot, is_available
+- **patients_list**: entry_id (PK), doctor_id (FK), patient_id (FK), added_at
+- **chats**: chat_id (PK), sender_id (FK users), receiver_id (FK users), message_text, sent_at
+- **prescriptions**: prescription_id (PK), doctor_id (FK), patient_id (FK), appointment_id (FK), medicine_name, dosage, duration, notes
+- **medical_history**: history_id (PK), patient_id (FK), doctor_id (FK), appointment_id (FK), description, created_at
+- **reviews**: review_id (PK), doctor_id (FK), patient_id (FK), rating, comment, created_at
+- **reports**: report_id (PK), doctor_id (FK), patient_id (FK), file_path, uploaded_at, report_type, notes
+
+---
+
+## 3. Admin Panel Modules
+
+### Modules & Work
+- **Dashboard**: Displays system stats – total patients, doctors, appointments, reviews, reports, and alerts.
+- **Patient Management**: Manage patient list, details, block/unblock, history, and activity monitoring.
+- **Doctor Management**: Verify doctors, approve/reject registrations, deactivate accounts, manage availability.
+- **Appointment Management**: Monitor all appointments, resolve disputes, handle cancellations/reschedules.
+- **Report Management**: Verify uploaded reports, remove invalid files, manage access.
+- **Review & Rating Management**: Monitor abusive/fake feedback, remove inappropriate reviews.
+- **Calendar**: Unified view of doctor availability.
+- **Notifications & Settings**: Send announcements, manage global settings, emergency alerts.
+- **Reports & Analytics**: Generate insights (most booked doctors, busiest slots, activity trends).
+- **Admin Logs**: Track all admin actions (deletes, updates, login history, user blocks).
+
+### Database Tables
+- **users**: user_id (PK), name, email, password, role (doctor/patient/admin), status
+- **patients_management**: patient_id (FK users), blocked_status, blocked_reason, last_active_at
+- **doctors_management**: doctor_id (FK users), verification_status, approved_at, deactivated_at, availability_status
+- **appointments**: appointment_id (PK), patient_id (FK), doctor_id (FK), date, status
+- **reports_management**: report_id (PK), patient_id (FK), doctor_id (FK), verified_status, removed_reason
+- **reviews_management**: review_id (PK), patient_id (FK), doctor_id (FK), status (approved/removed)
+- **calendar_view**: view_id (PK), doctor_id (FK), date, time_slot, status
+- **system_settings**: setting_id (PK), key, value
+- **notifications**: notification_id (PK), user_id (FK), message, created_at, read_status
+- **analytics**: analytics_id (PK), report_type, generated_by, generated_at, data_summary
+- **admin_logs**: log_id (PK), admin_id (FK users), action, target_table, target_id, timestamp
+
+---
+
+## 4. Flow Summary
+- **Patient Flow**: Register → Find Doctor → Book Appointment (Book/Today/Upcoming/Past) → Chat → AI Assistance → Prescription/Reports → Review.
+- **Doctor Flow**: Login → Manage Availability & Calendar → Accept/Reject Appointments → Chat → Upload Prescriptions/Reports → Add Notes.
+- **Admin Flow**: Login → Monitor System → Approve/Block Users → Verify Reports & Reviews → Analytics → Logs.
+
+---
+
+## ✅ Final Note
+This project ensures:
+- Patients can find, book, and consult doctors with AI support.
+- Doctors can manage patients, schedules, and reports effectively.
+- Admins can control, monitor, and optimize the system with transparency.
+
+### Extra Feature Suggestions
+- **Patient Panel**: Health reminders (medicine alerts, appointment notifications).
+- **Doctor Panel**: Automated follow-up reminders for patients.
+- **Admin Panel**: AI-driven analytics (peak booking times, performance tracking).
+
+---
+
+📌 This structure is the final approved requirement and database plan for the demo project.

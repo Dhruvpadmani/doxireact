@@ -1,0 +1,45 @@
+{
+  "name": "doxi",
+  "version": "1.0.0",
+  "description": "DOXI - Doctor Online Appointment System",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd fronted && npm run dev",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd fronted && npm run build && npm run preview",
+    "install:all": "npm install && cd backend && npm install && cd ../fronted && npm install",
+    "build": "cd fronted && npm run build",
+    "seed": "cd backend && npm run seed",
+    "clean": "rm -rf node_modules backend/node_modules fronted/node_modules",
+    "setup": "node setup.js"
+  },
+  "keywords": [
+    "medical",
+    "appointment",
+    "doctor",
+    "healthcare",
+    "react",
+    "nodejs",
+    "mongodb"
+  ],
+  "author": "DOXI Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/doxi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/doxi/issues"
+  },
+  "homepage": "https://github.com/your-username/doxi#readme"
+}

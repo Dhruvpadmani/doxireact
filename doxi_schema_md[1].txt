@@ -1,0 +1,272 @@
+## Doxi – Doctor Online Appointment System
+
+### Database Schema Documentation
+
+This document describes the updated database schema for **Doxi – Doctor Online Appointment System**, covering the three main panels: **Admin, Doctor, and Patient**. The schema is designed for efficient appointment booking, chat messaging, prescription management, emergency assistance, notifications, reports, and audit logs.
+
+---
+
+### 1. users
+**Purpose:** Stores all login accounts (admin, doctor, patient).
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| user_id | INT | PK, AI, Unique ID |
+| name | VARCHAR(100) | NOT NULL, Full name |
+| email | VARCHAR(100) | UNIQUE, NOT NULL |
+| password | VARCHAR(255) | NOT NULL, hashed |
+| role | ENUM('Admin','Doctor','Patient') | Defines user type |
+| status | ENUM('Active','Inactive') | Default 'Active' |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+
+---
+
+### 2. patients
+**Purpose:** Stores patient details and medical info.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| patient_id | INT | PK, AI |
+| user_id | INT | FK → users(user_id), UNIQUE, NOT NULL |
+| gender | ENUM('Male','Female','Other') | NOT NULL |
+| dob | DATE | |
+| blood_group | VARCHAR(5) | |
+| marital_status | ENUM('Single','Married') | Optional |
+| phone | VARCHAR(20) | |
+| emergency_contact_name | VARCHAR(100) | |
+| emergency_contact_no | VARCHAR(20) | |
+| address | TEXT | |
+| height | DECIMAL(5,2) | Optional |
+| weight | DECIMAL(5,2) | Optional |
+| occupation | VARCHAR(100) | Optional |
+| profile_photo | VARCHAR(255) | Default 'default_patient.png' |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+
+---
+
+### 3. doctors
+**Purpose:** Stores doctor details and professional info.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| doctor_id | INT | PK, AI |
+| user_id | INT | FK → users(user_id), UNIQUE, NOT NULL |
+| profile_photo | VARCHAR(255) | Default 'default_doctor.png' |
+| gender | ENUM('Male','Female','Other') | NOT NULL |
+| dob | DATE | |
+| contact_no | VARCHAR(20) | |
+| clinic_name | VARCHAR(100) | |
+| clinic_location | VARCHAR(255) | |
+| specialization | VARCHAR(100) | |
+| qualification | VARCHAR(255) | |
+| years_experience | INT | |
+| registration_no | VARCHAR(50) | |
+| certificate_url | VARCHAR(255) | Default 'default_certificate.png' |
+| availability | TEXT | **Redundant, use doctor_availability instead** |
+| rating | DECIMAL(3,1) | Default 0.0 |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | Auto-update |
+
+---
+
+### 4. appointment_types
+**Purpose:** Stores different categories of appointments.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| appointment_type_id | INT | PK, AI |
+| type_name | VARCHAR(100) | UNIQUE, NOT NULL |
+| duration_minutes | INT | NOT NULL |
+| description | TEXT | |
+
+---
+
+### 5. appointments
+**Purpose:** Stores booked appointments.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| appointment_id | INT | PK, AI |
+| patient_id | INT | FK → patients(patient_id) |
+| doctor_id | INT | FK → doctors(doctor_id) |
+| appointment_type_id | INT | FK → appointment_types(appointment_type_id) |
+| appointment_date | DATE | NOT NULL |
+| start_time | TIME | NOT NULL |
+| end_time | TIME | NOT NULL |
+| status | ENUM(...) | Default 'Scheduled' |
+| reason_for_visit | VARCHAR(255) | |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | Auto-update |
+
+---
+
+### 6. chats
+**Purpose:** Stores chat messages between doctors and patients.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| chat_id | INT | PK, AI |
+| sender_id | INT | FK → users(user_id) |
+| receiver_id | INT | FK → users(user_id) |
+| appointment_id | INT | FK → appointments(appointment_id), optional |
+| message | TEXT | NOT NULL |
+| sent_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| read_status | ENUM('Read','Unread') | Default 'Unread' |
+
+---
+
+### 7. prescriptions
+**Purpose:** Stores prescription details.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| prescription_id | INT | PK, AI |
+| appointment_id | INT | FK → appointments(appointment_id) |
+| patient_id | INT | FK → patients(patient_id), NOT NULL |
+| doctor_id | INT | FK → doctors(doctor_id), NOT NULL |
+| disease | VARCHAR(150) | |
+| medicine_details | TEXT | NOT NULL |
+| instructions | TEXT | |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | Auto-update |
+
+---
+
+### 8. reviews
+**Purpose:** Stores reviews and ratings of doctors.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| review_id | INT | PK, AI |
+| patient_id | INT | FK → patients(patient_id), NOT NULL |
+| doctor_id | INT | FK → doctors(doctor_id), NOT NULL |
+| appointment_id | INT | FK → appointments(appointment_id) |
+| rating | TINYINT(1) | Check 1–5 |
+| comment | TEXT | |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | Auto-update |
+
+---
+
+### 9. doctor_availability
+**Purpose:** Stores doctor weekly availability.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| availability_id | INT | PK, AI |
+| doctor_id | INT | FK → doctors(doctor_id), NOT NULL |
+| day_of_week | ENUM(...) | NOT NULL |
+| start_time | TIME | NOT NULL |
+| end_time | TIME | NOT NULL |
+| is_available | BOOLEAN | Default TRUE |
+
+---
+
+### 10. doctor_holidays
+**Purpose:** Stores doctor leave days/holidays.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| holiday_id | INT | PK, AI |
+| doctor_id | INT | FK → doctors(doctor_id), NOT NULL |
+| holiday_date | DATE | NOT NULL |
+| reason | VARCHAR(255) | |
+| is_full_day | BOOLEAN | Default TRUE |
+
+---
+
+### 11. emergency_requests
+**Purpose:** Stores patient emergency assistance requests.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| request_id | INT | PK, AI |
+| patient_id | INT | FK → patients(patient_id) |
+| doctor_id | INT | FK → doctors(doctor_id) |
+| description | TEXT | |
+| status | ENUM(...) | Pending/Accepted/Resolved/Cancelled |
+| requested_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| resolved_at | TIMESTAMP | |
+
+---
+
+### 12. notifications
+**Purpose:** Stores system-wide notifications and reminders.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| notification_id | INT | PK, AI |
+| receiver_id | INT | FK → users(user_id), NOT NULL |
+| receiver_type | ENUM('Admin','Doctor','Patient') | |
+| sender_id | INT | FK → users(user_id) |
+| sender_type | ENUM('Admin','Doctor','Patient') | |
+| title | VARCHAR(255) | |
+| message | TEXT | NOT NULL |
+| type | ENUM(...) | Email/Reminder/Message/System |
+| related_id | INT | |
+| reminder_time | DATETIME | |
+| delivery_status | ENUM('Pending','Sent') | |
+| read_status | ENUM('Unread','Read') | Default 'Unread' |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| read_at | TIMESTAMP | |
+
+---
+
+### 13. reports
+**Purpose:** Stores uploaded reports and documents.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| report_id | INT | PK, AI |
+| patient_id | INT | FK → patients(patient_id), NOT NULL |
+| doctor_id | INT | FK → doctors(doctor_id) |
+| file_path | VARCHAR(255) | NOT NULL |
+| report_type | VARCHAR(100) | |
+| report_date | DATE | NOT NULL |
+| report_status | ENUM(...) | Default 'Active' |
+| uploaded_by | INT | FK → users(user_id) |
+| tags | VARCHAR(255) | |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | Auto-update |
+
+---
+
+### 14. report_access_logs
+**Purpose:** Tracks report access history.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| log_id | INT | PK, AI |
+| report_id | INT | FK → reports(report_id), NOT NULL |
+| user_id | INT | FK → users(user_id), NOT NULL |
+| access_time | TIMESTAMP | Default CURRENT_TIMESTAMP |
+| action | ENUM(...) | View/Download/Share |
+| ip_address | VARCHAR(45) | |
+
+---
+
+### 15. report_history
+**Purpose:** Tracks changes made to reports.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| history_id | INT | PK, AI |
+| report_id | INT | FK → reports(report_id), NOT NULL |
+| updated_by | INT | FK → users(user_id), NOT NULL |
+| change_reason | VARCHAR(255) | |
+| updated_at | TIMESTAMP | Default CURRENT_TIMESTAMP |
+
+---
+
+### 16. admin_logs
+**Purpose:** Tracks admin actions in the system.
+
+| Column Name | Data Type | Constraints / Notes |
+|-------------|-----------|----------------------|
+| log_id | INT | PK, AI |
+| admin_id | INT | FK → users(user_id) |
+| action | VARCHAR(255) | |
+| target_table | VARCHAR(100) | |
+| target_id | INT | |
+| ip_address | VARCHAR(45) | |
+| created_at | TIMESTAMP | Default CURRENT_TIMESTAMP |

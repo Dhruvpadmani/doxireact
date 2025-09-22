@@ -1,0 +1,24 @@
+# Frontend specific files
+# (Root .gitignore handles most common files)
+
+# Vite specific
+dist/
+dist-ssr/
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vite cache
+.vite/
+
+# Storybook build outputs
+storybook-static/
+
+# Temporary files
+*.tmp
+*.temp

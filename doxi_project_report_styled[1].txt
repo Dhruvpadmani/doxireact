@@ -1,0 +1,110 @@
+# Doctor Online Appointment System (DOXI)
+
+## Project Report
+
+### Introduction
+The Doctor Online Appointment System (DOXI) is a healthcare web application designed to help patients book online appointments with doctors. It allows doctors to register with their specialization, clinic/hospital details, and registration number, while patients can search by city, state, or country to book consultations. The system aims to streamline doctor-patient interaction and improve healthcare accessibility.
+
+---
+
+### Objectives & Purpose
+- Provide an online platform for patients to book appointments anytime, anywhere.
+- Enable doctors to manage schedules, prescriptions, and reports.
+- Offer admins a dashboard to monitor doctors, patients, and system activities.
+- Support emergency requests and chat between patients and doctors.
+- Integrate AI assistant to support medical queries in an informational manner.
+
+---
+
+### System Users & Panels
+
+| Panel  | Responsibilities |
+|--------|------------------|
+| **Admin** | Manage doctors/patients, approve doctors, monitor appointments, reviews, reports, notifications, and logs. |
+| **Doctor** | Manage availability, view appointments, issue prescriptions, upload reports, chat with patients, respond to emergency requests. |
+| **Patient** | Register/login, book/cancel appointments, view prescriptions/reports, chat with doctors, request emergency assistance, give reviews. |
+
+---
+
+### Modules of the System
+- User Management  
+- Doctor Management  
+- Patient Management  
+- Appointments  
+- Prescriptions  
+- Reports  
+- Reviews  
+- Notifications  
+- Chats  
+- Emergency Assistance  
+- Logs  
+
+---
+
+### Database Schema Overview
+The database schema is created in phpMyAdmin using MySQL. It ensures secure and efficient data management with **16 relational tables** listed below:
+
+1. users  
+2. doctors  
+3. patients  
+4. appointments  
+5. doctor_availability  
+6. prescriptions  
+7. reports  
+8. reviews  
+9. notifications  
+10. payments  
+11. specialties  
+12. hospital_clinics  
+13. logs  
+14. chats  
+15. emergency_requests  
+16. admin_logs  
+
+---
+
+### AI Medical Assistant Integration
+- Assists patients with health-related queries.  
+- Suggests possible symptoms/causes but does not replace doctors.  
+- Limited to informational purposes; cannot prescribe or diagnose.  
+- Enhances doctor-patient communication with supportive insights.  
+
+---
+
+### Tools & Technologies Used
+- **Frontend:** HTML, CSS, Bootstrap  
+- **Backend:** PHP, MySQL (phpMyAdmin)  
+- **Version Control:** Git, GitHub  
+- **Other Tools:** Figma (UI Design), Postman (API Testing)  
+
+---
+
+### UI/UX Design Requirements
+- Login/Register form with overview text on homepage.  
+- Role-based redirection (Admin/Doctor/Patient).  
+- Dashboard layout: profile pic (top-left), name & role label, sidebar menu, top search bar, top-right profile/notifications/theme toggle.  
+- Appointment calendar integrated.  
+- Real-time chat feature in doctor & patient dashboards.  
+- Dark/Light theme toggle option.  
+
+---
+
+### System Flow
+[Login/Register Page] → [Role Verification]  
+→ **Admin Dashboard** → Manage Doctors, Patients, Appointments, Logs  
+→ **Doctor Dashboard** → Manage Availability, Appointments, Prescriptions, Reports, Chat  
+→ **Patient Dashboard** → Book Appointments, View Prescriptions/Reports, Emergency Requests, Chat  
+
+---
+
+### Expected Outcomes
+- A fully functional online appointment platform with role-based dashboards.  
+- Secure doctor-patient communication via chat system.  
+- Emergency assistance features for urgent cases.  
+- AI-powered assistance for general queries.  
+- Admin oversight through logs, reviews, and reports.  
+
+---
+
+### Conclusion
+The DOXI system provides a comprehensive healthcare platform with role-based access for Admin, Doctor, and Patient. It integrates structured modules, secure schema design, real-time communication, and AI support to enhance healthcare accessibility and efficiency.

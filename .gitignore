@@ -1,0 +1,315 @@
+# DOXI - Doctor Online Appointment System
+# Comprehensive .gitignore for full-stack Node.js + React project
+
+# ===========================================
+# DEPENDENCIES
+# ===========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ===========================================
+# ENVIRONMENT VARIABLES
+# ===========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# ===========================================
+# BUILD OUTPUTS
+# ===========================================
+# Frontend builds
+dist/
+dist-ssr/
+build/
+out/
+
+# Backend builds
+lib/
+coverage/
+
+# ===========================================
+# LOGS
+# ===========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ===========================================
+# DATABASE
+# ===========================================
+# MongoDB
+*.db
+*.sqlite
+*.sqlite3
+
+# Database dumps
+*.dump
+*.sql
+
+# ===========================================
+# UPLOADS & MEDIA
+# ===========================================
+# File uploads
+uploads/
+public/uploads/
+temp/
+tmp/
+
+# Media files (if storing locally)
+media/
+static/media/
+
+# ===========================================
+# CACHE & TEMPORARY FILES
+# ===========================================
+# Cache directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
+.fusebox/
+
+# Temporary folders
+tmp/
+temp/
+
+# ===========================================
+# EDITOR & IDE
+# ===========================================
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# JetBrains IDEs
+.idea/
+*.swp
+*.swo
+*~
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ===========================================
+# OPERATING SYSTEM
+# ===========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===========================================
+# TESTING
+# ===========================================
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Jest
+.jest/
+
+# ===========================================
+# SECURITY & KEYS
+# ===========================================
+# API Keys and secrets
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# SSH keys
+id_rsa
+id_rsa.pub
+id_dsa
+id_dsa.pub
+id_ecdsa
+id_ecdsa.pub
+id_ed25519
+id_ed25519.pub
+
+# ===========================================
+# DOCUMENTATION
+# ===========================================
+# Generated documentation
+docs/build/
+docs/_build/
+
+# ===========================================
+# MISC
+# ===========================================
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env.development
+.env.test
+.env.production
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ===========================================
+# PROJECT SPECIFIC
+# ===========================================
+# AI Medical Assistant files
+ai_medical_assistant_integration[1].txt
+demo_project_scope[1].txt
+doxi_final_schema[1].txt
+doxi_project_report_styled[1].txt
+doxi_project_report[1].txt
+doxi_schema_md[1].txt
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ===========================================
+# DEPLOYMENT
+# ===========================================
+# Docker
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+
+# Kubernetes
+*.kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# ===========================================
+# MONITORING & ANALYTICS
+# ===========================================
+# Application monitoring
+newrelic_agent.log
+newrelic.js
+
+# Performance monitoring
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
