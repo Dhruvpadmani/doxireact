@@ -4,12 +4,12 @@ const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
 const Notification = require('../models/Notification');
-const { authenticateToken, requirePatient, requireDoctorOrAdmin } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Book new appointment
-router.post('/book', authenticateToken, requirePatient, [
+router.post('/book', authenticateToken, authorizeRole('patient'), [
   body('doctorId').isMongoId(),
   body('appointmentDate').isISO8601(),
   body('appointmentTime').notEmpty(),
@@ -277,7 +277,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Update appointment
-router.put('/:id', authenticateToken, requireDoctorOrAdmin, [
+router.put('/:id', authenticateToken, authorizeRole('doctor', 'admin'), [
   body('status').optional().isIn(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled']),
   body('notes').optional().isString(),
   body('followUpRequired').optional().isBoolean(),

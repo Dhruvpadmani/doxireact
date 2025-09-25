@@ -11,9 +11,13 @@ import DoctorDashboard from './pages/doctor/DoctorDashboard'
 import DoctorAppointments from './pages/doctor/DoctorAppointments'
 import StandaloneDoctorAppointments from './pages/DoctorAppointments'
 import PatientDashboard from './pages/patient/PatientDashboard'
+import PatientFindDoctor from './pages/patient/FindDoctor'
+import MedicalReports from './pages/patient/MedicalReports'
+import TestAuth from './pages/patient/TestAuth'
 import StandalonePatientDashboard from './pages/PatientDashboard'
 import BookAppointment from './pages/patient/BookAppointment'
 import StandaloneBookAppointment from './pages/BookAppointment'
+import PatientLayout from './layouts/PatientLayout'
 import LoadingSpinner from './components/LoadingSpinner'
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -53,14 +57,15 @@ function AppRoutes() {
       <Route path="/doctor-appointments" element={<StandaloneDoctorAppointments />} />
       <Route path="/patient-dashboard" element={<StandalonePatientDashboard />} />
       
-      {/* Protected Routes */}
+      {/* Protected Routes - Redirect to role-specific dashboards */}
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
-            {user?.role === 'admin' && <AdminDashboard />}
-            {user?.role === 'doctor' && <DoctorDashboard />}
-            {user?.role === 'patient' && <PatientDashboard />}
+          <ProtectedRoute allowedRoles={['admin', 'doctor', 'patient']}>
+            {console.log('Dashboard route, user role:', user?.role)}
+            {user?.role === 'admin' && <Navigate to="/admin" replace />}
+            {user?.role === 'doctor' && <Navigate to="/doctor" replace />}
+            {user?.role === 'patient' && <Navigate to="/patient" replace />}
           </ProtectedRoute>
         }
       />
@@ -93,23 +98,21 @@ function AppRoutes() {
         }
       />
       
-      {/* Patient Routes */}
+      {/* Patient Routes with Layout */}
       <Route
-        path="/patient/book-appointment"
+        path="/patient"
         element={
           <ProtectedRoute allowedRoles={['patient']}>
-            <BookAppointment />
+            <PatientLayout />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/patient/*"
-        element={
-          <ProtectedRoute allowedRoles={['patient']}>
-            <PatientDashboard />
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route index element={<PatientDashboard />} />
+        <Route path="book-appointment" element={<BookAppointment />} />
+        <Route path="find-doctor" element={<PatientFindDoctor />} />
+        <Route path="medical-reports" element={<MedicalReports />} />
+        <Route path="test-auth" element={<TestAuth />} />
+      </Route>
       
       {/* Default redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

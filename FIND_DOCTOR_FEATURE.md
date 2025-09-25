@@ -158,3 +158,4 @@ The seeder includes 5 sample doctors:
 - **Favorites**: Save favorite doctors
 - **Reviews integration**: Show recent reviews on doctor cards
 - **Map integration**: Show doctor locations on map
+

@@ -4,12 +4,12 @@ const Report = require('../models/Report');
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
 const Notification = require('../models/Notification');
-const { authenticateToken, requireDoctorOrAdmin, requirePatientOrAdmin } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Create report
-router.post('/', authenticateToken, requireDoctorOrAdmin, [
+router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
   body('patientId').isMongoId(),
   body('type').isIn(['lab', 'imaging', 'pathology', 'radiology', 'blood_test', 'urine_test', 'xray', 'mri', 'ct_scan', 'ultrasound', 'other']),
   body('title').notEmpty(),
@@ -236,7 +236,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Update report
-router.put('/:id', authenticateToken, requireDoctorOrAdmin, [
+router.put('/:id', authenticateToken, authorizeRole('doctor', 'admin'), [
   body('title').optional().notEmpty(),
   body('description').optional().isString(),
   body('results').optional().isArray(),
@@ -317,7 +317,7 @@ router.put('/:id', authenticateToken, requireDoctorOrAdmin, [
 });
 
 // Review report
-router.put('/:id/review', authenticateToken, requireDoctorOrAdmin, [
+router.put('/:id/review', authenticateToken, authorizeRole('doctor', 'admin'), [
   body('recommendations').optional().isString(),
   body('followUpRequired').optional().isBoolean(),
   body('followUpDate').optional().isISO8601()
@@ -378,7 +378,7 @@ router.put('/:id/review', authenticateToken, requireDoctorOrAdmin, [
 });
 
 // Share report with another doctor
-router.post('/:id/share', authenticateToken, requireDoctorOrAdmin, [
+router.post('/:id/share', authenticateToken, authorizeRole('doctor', 'admin'), [
   body('doctorId').isMongoId(),
   body('accessLevel').optional().isIn(['view', 'download'])
 ], async (req, res) => {
@@ -521,7 +521,7 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
 });
 
 // Delete report
-router.delete('/:id', authenticateToken, requireDoctorOrAdmin, async (req, res) => {
+router.delete('/:id', authenticateToken, authorizeRole('doctor', 'admin'), async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
 

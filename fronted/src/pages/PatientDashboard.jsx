@@ -119,7 +119,7 @@ export default function PatientDashboard() {
               <Calendar className="h-5 w-5" />
               Book Appointment
             </a>
-            <a href="#" className="nav-item">
+            <a href="/patient/find-doctor" className="nav-item">
               <Stethoscope className="h-5 w-5" />
               Find Doctor
             </a>
@@ -237,7 +237,7 @@ export default function PatientDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="dashboard-card">
               <div className="flex items-center justify-between">
                 <div>
@@ -253,6 +253,24 @@ export default function PatientDashboard() {
                 onClick={() => window.location.href = '/book-appointment'}
               >
                 Book Now
+              </button>
+            </div>
+
+            <div className="dashboard-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Find Doctor</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Search and discover doctors</p>
+                </div>
+                <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-full">
+                  <Stethoscope className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+              <button 
+                className="btn w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => window.location.href = '/patient/find-doctor'}
+              >
+                Find Doctor
               </button>
             </div>
 

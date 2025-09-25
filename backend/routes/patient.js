@@ -7,13 +7,13 @@ const Prescription = require('../models/Prescription');
 const Report = require('../models/Report');
 const Review = require('../models/Review');
 const EmergencyRequest = require('../models/EmergencyRequest');
-const { authenticateToken, requirePatient } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Apply authentication and patient role check to all routes
 router.use(authenticateToken);
-router.use(requirePatient);
+router.use(authorizeRole('patient'));
 
 // Get patient profile
 router.get('/profile', async (req, res) => {
