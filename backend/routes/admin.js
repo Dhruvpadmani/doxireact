@@ -10,13 +10,13 @@ const Review = require('../models/Review');
 const Notification = require('../models/Notification');
 const EmergencyRequest = require('../models/EmergencyRequest');
 const AdminLog = require('../models/AdminLog');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Apply authentication and admin role check to all routes
 router.use(authenticateToken);
-router.use(requireAdmin);
+router.use(authorizeRole('admin'));
 
 // Dashboard statistics
 router.get('/dashboard', async (req, res) => {

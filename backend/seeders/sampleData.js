@@ -456,7 +456,8 @@ async function seedDatabase() {
     for (let i = 0; i < sampleDoctors.length; i++) {
       const doctorData = {
         ...sampleDoctors[i],
-        userId: createdUsers[i + 1]._id // Skip admin user
+        userId: createdUsers[i + 1]._id, // Skip admin user
+        doctorId: `DOC${String(i + 1).padStart(6, '0')}` // Generate doctorId manually
       };
       const doctor = new Doctor(doctorData);
       await doctor.save();

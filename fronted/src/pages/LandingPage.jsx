@@ -102,7 +102,6 @@ export default function LandingPage() {
             </div>
             
             <div className="hidden md:flex items-center space-x-8">
-              <Link to="/find-doctor" className="text-gray-700 dark:text-gray-300 hover:text-blue-600">Find Doctor</Link>
               <a href="#features" className="text-gray-700 dark:text-gray-300 hover:text-blue-600">Features</a>
               <a href="#about" className="text-gray-700 dark:text-gray-300 hover:text-blue-600">About</a>
               <a href="#testimonials" className="text-gray-700 dark:text-gray-300 hover:text-blue-600">Testimonials</a>
@@ -138,7 +137,6 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              <Link to="/find-doctor" className="block px-3 py-2 text-gray-700 dark:text-gray-300">Find Doctor</Link>
               <a href="#features" className="block px-3 py-2 text-gray-700 dark:text-gray-300">Features</a>
               <a href="#about" className="block px-3 py-2 text-gray-700 dark:text-gray-300">About</a>
               <a href="#testimonials" className="block px-3 py-2 text-gray-700 dark:text-gray-300">Testimonials</a>
@@ -168,22 +166,15 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to="/find-doctor"
-                className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
-              >
-                Find Doctor
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-              <Link
                 to="/patient-dashboard"
-                className="bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center"
+                className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
               >
                 Patient Panel
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
               <Link
                 to="/doctor-appointments"
-                className="bg-purple-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center"
+                className="bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center"
               >
                 Doctor Panel
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -343,22 +334,15 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/find-doctor"
-              className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
-            >
-              Find Doctor
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-            <Link
               to="/patient-dashboard"
-              className="bg-green-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-600 transition-colors inline-flex items-center"
+              className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
             >
               Patient Panel
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
             <Link
               to="/doctor-appointments"
-              className="bg-purple-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-purple-600 transition-colors inline-flex items-center"
+              className="bg-green-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-600 transition-colors inline-flex items-center"
             >
               Doctor Panel
               <ArrowRight className="ml-2 h-5 w-5" />

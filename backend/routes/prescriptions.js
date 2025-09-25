@@ -5,12 +5,12 @@ const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
 const Notification = require('../models/Notification');
-const { authenticateToken, requireDoctorOrAdmin, requirePatientOrAdmin } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Create prescription
-router.post('/', authenticateToken, requireDoctorOrAdmin, [
+router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
   body('appointmentId').isMongoId(),
   body('medications').isArray({ min: 1 }),
   body('medications.*.name').notEmpty(),
@@ -239,7 +239,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Update prescription
-router.put('/:id', authenticateToken, requireDoctorOrAdmin, [
+router.put('/:id', authenticateToken, authorizeRole('doctor', 'admin'), [
   body('medications').optional().isArray({ min: 1 }),
   body('diagnosis.primary').optional().notEmpty(),
   body('diagnosis.secondary').optional().isArray(),
@@ -325,7 +325,7 @@ router.put('/:id', authenticateToken, requireDoctorOrAdmin, [
 });
 
 // Add refill to prescription
-router.post('/:id/refill', authenticateToken, requirePatientOrAdmin, [
+router.post('/:id/refill', authenticateToken, authorizeRole('patient', 'admin'), [
   body('quantity').optional().isInt({ min: 1 })
 ], async (req, res) => {
   try {
@@ -393,7 +393,7 @@ router.post('/:id/refill', authenticateToken, requirePatientOrAdmin, [
 });
 
 // Delete prescription
-router.delete('/:id', authenticateToken, requireDoctorOrAdmin, async (req, res) => {
+router.delete('/:id', authenticateToken, authorizeRole('doctor', 'admin'), async (req, res) => {
   try {
     const prescription = await Prescription.findById(req.params.id);
 

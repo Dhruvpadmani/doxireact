@@ -4,12 +4,12 @@ const Review = require('../models/Review');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
-const { authenticateToken, requirePatient, requireDoctorOrAdmin } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Create review
-router.post('/', authenticateToken, requirePatient, [
+router.post('/', authenticateToken, authorizeRole('patient'), [
   body('appointmentId').isMongoId(),
   body('rating').isInt({ min: 1, max: 5 }),
   body('title').optional().isLength({ max: 100 }),
@@ -182,7 +182,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update review
-router.put('/:id', authenticateToken, requirePatient, [
+router.put('/:id', authenticateToken, authorizeRole('patient'), [
   body('rating').optional().isInt({ min: 1, max: 5 }),
   body('title').optional().isLength({ max: 100 }),
   body('comment').optional().isLength({ max: 1000 }),
@@ -261,7 +261,7 @@ router.put('/:id', authenticateToken, requirePatient, [
 });
 
 // Respond to review (doctor only)
-router.put('/:id/respond', authenticateToken, requireDoctorOrAdmin, [
+router.put('/:id/respond', authenticateToken, authorizeRole('doctor', 'admin'), [
   body('response').notEmpty().isLength({ max: 500 })
 ], async (req, res) => {
   try {
@@ -363,7 +363,7 @@ router.post('/:id/helpful', authenticateToken, async (req, res) => {
 });
 
 // Delete review
-router.delete('/:id', authenticateToken, requirePatient, async (req, res) => {
+router.delete('/:id', authenticateToken, authorizeRole('patient'), async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
 
