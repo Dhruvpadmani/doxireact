@@ -12,7 +12,8 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye
+  Eye,
+  X
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -28,31 +29,45 @@ export default function BookAppointment() {
     reason: ''
   })
   const [success, setSuccess] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [editForm, setEditForm] = useState({
+    doctorId: '',
+    date: '',
+    time: '',
+    type: 'in_person',
+    reason: ''
+  })
   const { user } = useAuth()
 
-  // Mock appointment data
-  const [appointments, setAppointments] = useState([
-    {
-      id: '1',
-      doctor: 'Dr. John Smith',
-      specialization: 'Cardiologist',
-      date: '2024-01-25',
-      time: '10:00 AM',
-      type: 'in_person',
-      status: 'confirmed',
-      reason: 'Regular checkup'
-    },
-    {
-      id: '2',
-      doctor: 'Dr. Sarah Johnson',
-      specialization: 'Dermatologist',
-      date: '2024-01-26',
-      time: '2:30 PM',
-      type: 'video',
-      status: 'pending',
-      reason: 'Skin consultation'
+  // Load appointments from localStorage only
+  const [appointments, setAppointments] = useState(() => {
+    const savedAppointments = localStorage.getItem('patientAppointments')
+    return savedAppointments ? JSON.parse(savedAppointments) : []
+  })
+
+  // Load doctors from localStorage
+  const [doctors, setDoctors] = useState([])
+
+  // Load doctors on component mount
+  useEffect(() => {
+    loadDoctors()
+  }, [])
+
+  const loadDoctors = () => {
+    try {
+      const savedDoctors = localStorage.getItem('registeredDoctors')
+      if (savedDoctors) {
+        setDoctors(JSON.parse(savedDoctors))
+      } else {
+        setDoctors([])
+      }
+    } catch (error) {
+      console.error('Error loading doctors:', error)
+      setDoctors([])
     }
-  ])
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -63,18 +78,26 @@ export default function BookAppointment() {
       await new Promise(resolve => setTimeout(resolve, 2000))
       setSuccess(true)
       
+      // Find selected doctor
+      const selectedDoctor = doctors.find(doctor => doctor.id === appointmentData.doctorId)
+      
       // Add new appointment to list
       const newAppointment = {
         id: Date.now().toString(),
-        doctor: 'Dr. Selected Doctor',
-        specialization: 'General',
+        doctorId: appointmentData.doctorId,
+        doctor: selectedDoctor ? `${selectedDoctor.profile?.firstName} ${selectedDoctor.profile?.lastName}` : 'Selected Doctor',
+        specialization: selectedDoctor?.specialization || 'General',
         date: appointmentData.date,
         time: appointmentData.time,
         type: appointmentData.type,
         status: 'pending',
         reason: appointmentData.reason
       }
-      setAppointments(prev => [newAppointment, ...prev])
+      const updatedAppointments = [newAppointment, ...appointments]
+      setAppointments(updatedAppointments)
+      
+      // Save to localStorage
+      localStorage.setItem('patientAppointments', JSON.stringify(updatedAppointments))
       
       // Reset form
       setAppointmentData({
@@ -142,6 +165,64 @@ export default function BookAppointment() {
         return <Clock className="w-4 h-4" />
       default:
         return <User className="w-4 h-4" />
+    }
+  }
+
+  const handleViewAppointment = (appointment) => {
+    setSelectedAppointment(appointment)
+    setShowViewModal(true)
+  }
+
+  const handleEditAppointment = (appointment) => {
+    setSelectedAppointment(appointment)
+    setEditForm({
+      doctorId: appointment.doctorId || '',
+      date: appointment.date,
+      time: appointment.time,
+      type: appointment.type,
+      reason: appointment.reason
+    })
+    setShowEditModal(true)
+  }
+
+  const handleDeleteAppointment = async (appointmentId) => {
+    if (window.confirm('Are you sure you want to delete this appointment?')) {
+      try {
+        const updatedAppointments = appointments.filter(apt => apt.id !== appointmentId)
+        setAppointments(updatedAppointments)
+        localStorage.setItem('patientAppointments', JSON.stringify(updatedAppointments))
+        alert('Appointment deleted successfully!')
+      } catch (error) {
+        console.error('Error deleting appointment:', error)
+        alert('Failed to delete appointment. Please try again.')
+      }
+    }
+  }
+
+  const handleUpdateAppointment = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    
+    try {
+      // Mock update
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      const updatedAppointments = appointments.map(apt => 
+        apt.id === selectedAppointment.id 
+          ? { ...apt, ...editForm }
+          : apt
+      )
+      setAppointments(updatedAppointments)
+      localStorage.setItem('patientAppointments', JSON.stringify(updatedAppointments))
+      
+      setShowEditModal(false)
+      setSelectedAppointment(null)
+      alert('Appointment updated successfully!')
+    } catch (error) {
+      console.error('Update failed:', error)
+      alert('Failed to update appointment. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -255,9 +336,11 @@ export default function BookAppointment() {
                         required
                       >
                         <option value="">Choose a doctor...</option>
-                        <option value="dr1">Dr. John Smith - Cardiologist</option>
-                        <option value="dr2">Dr. Sarah Johnson - Dermatologist</option>
-                        <option value="dr3">Dr. Michael Brown - Neurologist</option>
+                        {doctors.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.profile?.firstName} {doctor.profile?.lastName} - {doctor.specialization}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -429,13 +512,25 @@ export default function BookAppointment() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleViewAppointment(appointment)}
+                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg transition-colors"
+                            title="View appointment"
+                          >
                             <Eye className="h-4 w-4" />
                           </button>
-                          <button className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleEditAppointment(appointment)}
+                            className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900 rounded-lg transition-colors"
+                            title="Edit appointment"
+                          >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleDeleteAppointment(appointment.id)}
+                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg transition-colors"
+                            title="Delete appointment"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -448,6 +543,151 @@ export default function BookAppointment() {
           )}
         </div>
       </div>
+
+      {/* View Appointment Modal */}
+      {showViewModal && selectedAppointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Appointment Details</h3>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Doctor</label>
+                <p className="text-gray-900 dark:text-white">{selectedAppointment.doctor}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
+                <p className="text-gray-900 dark:text-white">{new Date(selectedAppointment.date).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Time</label>
+                <p className="text-gray-900 dark:text-white">{selectedAppointment.time}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
+                <p className="text-gray-900 dark:text-white">{selectedAppointment.type.replace('_', ' ')}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason</label>
+                <p className="text-gray-900 dark:text-white">{selectedAppointment.reason}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(selectedAppointment.status)}`}>
+                  {selectedAppointment.status}
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Appointment Modal */}
+      {showEditModal && selectedAppointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Appointment</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdateAppointment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date</label>
+                <input
+                  type="date"
+                  value={editForm.date}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time</label>
+                <select
+                  value={editForm.time}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, time: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                >
+                  <option value="">--:--</option>
+                  <option value="09:00">9:00 AM</option>
+                  <option value="10:00">10:00 AM</option>
+                  <option value="11:00">11:00 AM</option>
+                  <option value="14:00">2:00 PM</option>
+                  <option value="15:00">3:00 PM</option>
+                  <option value="16:00">4:00 PM</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Type</label>
+                <select
+                  value={editForm.type}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                >
+                  <option value="in_person">In-Person</option>
+                  <option value="video">Video Call</option>
+                  <option value="phone">Phone Call</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason</label>
+                <textarea
+                  value={editForm.reason}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, reason: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Updating...' : 'Update Appointment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

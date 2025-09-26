@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { adminAPI } from '../../services/api'
-import { generateDemoAdminData } from '../../utils/demoData'
+// Demo data removed
 import LoadingSpinner from '../../components/LoadingSpinner'
 import Header from '../../components/Header'
 
@@ -34,8 +34,23 @@ export default function AdminDashboard() {
       setDashboardData(response.data)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
-      // Use demo data when API fails
-      setDashboardData(generateDemoAdminData())
+      // No demo data - show empty state
+      setDashboardData({
+        statistics: {
+          total: {
+            users: 0,
+            doctors: 0,
+            appointments: 0
+          },
+          emergency: {
+            pending: 0
+          }
+        },
+        recent: {
+          appointments: [],
+          users: []
+        }
+      })
     } finally {
       setLoading(false)
     }

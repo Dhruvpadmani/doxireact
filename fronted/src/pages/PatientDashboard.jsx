@@ -11,7 +11,6 @@ import {
   X,
   Heart,
   MessageCircle,
-  Bot,
   ArrowLeft
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -134,10 +133,6 @@ export default function PatientDashboard() {
             <a href="#" className="nav-item">
               <MessageCircle className="h-5 w-5" />
               Chat
-            </a>
-            <a href="#" className="nav-item">
-              <Bot className="h-5 w-5" />
-              AI Assistant
             </a>
             <a href="#" className="nav-item">
               <Star className="h-5 w-5" />
@@ -274,23 +269,6 @@ export default function PatientDashboard() {
               </button>
             </div>
 
-            <div className="dashboard-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">AI Assistant</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Get medical guidance</p>
-                </div>
-                <div className="bg-success-100 dark:bg-success-900 p-3 rounded-full">
-                  <Bot className="h-6 w-6 text-success-600" />
-                </div>
-              </div>
-              <button 
-                className="btn btn-success w-full mt-4"
-                onClick={() => alert('AI Assistant feature coming soon!')}
-              >
-                Chat Now
-              </button>
-            </div>
 
             <div className="dashboard-card">
               <div className="flex items-center justify-between">

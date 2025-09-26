@@ -27,7 +27,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { doctorAPI } from '../../services/api'
-import { generateDemoDoctorData } from '../../utils/demoData'
+// Demo data removed
 import LoadingSpinner from '../../components/LoadingSpinner'
 import Header from '../../components/Header'
 
@@ -47,8 +47,19 @@ export default function DoctorDashboard() {
       setDashboardData(response.data)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
-      // Use demo data when API fails
-      setDashboardData(generateDemoDoctorData())
+      // No demo data - show empty state
+      setDashboardData({
+        statistics: {
+          todayAppointments: 0,
+          totalAppointments: 0,
+          totalPrescriptions: 0,
+          averageRating: 0
+        },
+        recent: {
+          appointments: [],
+          upcoming: []
+        }
+      })
     } finally {
       setLoading(false)
     }

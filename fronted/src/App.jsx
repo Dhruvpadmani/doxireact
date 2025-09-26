@@ -11,9 +11,12 @@ import DoctorDashboard from './pages/doctor/DoctorDashboard'
 import DoctorAppointments from './pages/doctor/DoctorAppointments'
 import StandaloneDoctorAppointments from './pages/DoctorAppointments'
 import PatientDashboard from './pages/patient/PatientDashboard'
-import PatientFindDoctor from './pages/patient/FindDoctor'
+import PatientFindDoctor from './pages/patient/FindDoctorNew'
 import MedicalReports from './pages/patient/MedicalReports'
 import TestAuth from './pages/patient/TestAuth'
+import Reviews from './pages/patient/Reviews'
+import MedicalHistory from './pages/patient/MedicalHistory'
+import Prescriptions from './pages/patient/Prescriptions'
 import StandalonePatientDashboard from './pages/PatientDashboard'
 import BookAppointment from './pages/patient/BookAppointment'
 import StandaloneBookAppointment from './pages/BookAppointment'
@@ -27,11 +30,15 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <LoadingSpinner />
   }
 
-  if (!user) {
+  // Check if user data exists in localStorage as fallback
+  const savedUser = localStorage.getItem('user')
+  const token = localStorage.getItem('token')
+  
+  if (!user && !savedUser && !token) {
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />
   }
 
@@ -111,6 +118,9 @@ function AppRoutes() {
         <Route path="book-appointment" element={<BookAppointment />} />
         <Route path="find-doctor" element={<PatientFindDoctor />} />
         <Route path="medical-reports" element={<MedicalReports />} />
+                <Route path="reviews" element={<Reviews />} />
+                <Route path="medical-history" element={<MedicalHistory />} />
+                <Route path="prescriptions" element={<Prescriptions />} />
         <Route path="test-auth" element={<TestAuth />} />
       </Route>
       

@@ -60,8 +60,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token')
-      if (token) {
+      const savedUser = localStorage.getItem('user')
+      
+      if (token && savedUser) {
         try {
+          // Try to validate with backend first
           const response = await authAPI.getProfile()
           dispatch({
             type: 'AUTH_SUCCESS',
@@ -71,11 +74,26 @@ export function AuthProvider({ children }) {
             }
           })
         } catch (error) {
-          localStorage.removeItem('token')
-          dispatch({
-            type: 'AUTH_FAILURE',
-            payload: error.response?.data?.message || 'Authentication failed'
-          })
+          // If backend fails, use saved user data as fallback
+          console.log('Backend auth failed, using saved user data:', error.message)
+          try {
+            const userData = JSON.parse(savedUser)
+            dispatch({
+              type: 'AUTH_SUCCESS',
+              payload: {
+                user: userData,
+                token
+              }
+            })
+          } catch (parseError) {
+            // If saved user data is invalid, clear everything
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            dispatch({
+              type: 'AUTH_FAILURE',
+              payload: 'Session expired'
+            })
+          }
         }
       } else {
         dispatch({ type: 'AUTH_FAILURE', payload: null })
@@ -92,6 +110,7 @@ export function AuthProvider({ children }) {
       const { token, user } = response.data
       
       localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
       dispatch({
         type: 'AUTH_SUCCESS',
         payload: { user, token }
@@ -165,9 +184,34 @@ export function AuthProvider({ children }) {
       })
       localStorage.setItem('demoAccounts', JSON.stringify(demoAccounts))
       
+      // If doctor is registering, save to registeredDoctors for patient panel
+      if (userData.role === 'doctor') {
+        const doctorData = {
+          id: demoUser.id,
+          profile: userData.profile,
+          specialization: userData.profile.specialization || 'General Medicine',
+          experience: userData.profile.experience || 0,
+          consultationFee: userData.profile.consultationFee || 0,
+          licenseNumber: userData.profile.licenseNumber || '',
+          bio: userData.profile.bio || '',
+          languages: userData.profile.languages || ['English'],
+          rating: {
+            average: 0,
+            count: 0
+          },
+          isVerified: false,
+          createdAt: new Date().toISOString()
+        }
+        
+        const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]')
+        registeredDoctors.push(doctorData)
+        localStorage.setItem('registeredDoctors', JSON.stringify(registeredDoctors))
+      }
+      
       const demoToken = 'demo-token-' + Date.now()
       
       localStorage.setItem('token', demoToken)
+      localStorage.setItem('user', JSON.stringify(demoUser))
       dispatch({
         type: 'AUTH_SUCCESS',
         payload: { user: demoUser, token: demoToken }
@@ -185,6 +229,7 @@ export function AuthProvider({ children }) {
       console.error('Logout error:', error)
     } finally {
       localStorage.removeItem('token')
+      localStorage.removeItem('user')
       dispatch({ type: 'LOGOUT' })
       toast.success('Logged out successfully')
     }
