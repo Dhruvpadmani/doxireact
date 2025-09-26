@@ -7,7 +7,13 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     lowercase: true,
-    trim: true
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return /^[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(v);
+      },
+      message: 'Please enter a valid email address'
+    }
   },
   password: {
     type: String,
@@ -30,16 +36,24 @@ const userSchema = new mongoose.Schema({
     firstName: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      maxlength: [50, 'First name must be at most 50 characters']
     },
     lastName: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      maxlength: [50, 'Last name must be at most 50 characters']
     },
     phone: {
       type: String,
-      required: true
+      required: true,
+      validate: {
+        validator: function(v) {
+          return /^\d{10}$/.test(v);
+        },
+        message: 'Phone number must be exactly 10 digits'
+      }
     },
     avatar: {
       type: String,

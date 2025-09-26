@@ -44,7 +44,7 @@ router.get('/profile', async (req, res) => {
 router.put('/profile', [
   body('emergencyContact.name').optional().notEmpty(),
   body('emergencyContact.relationship').optional().notEmpty(),
-  body('emergencyContact.phone').optional().notEmpty(),
+  body('emergencyContact.phone').optional().matches(/^\d{10}$/).withMessage('Phone number must be exactly 10 digits'),
   body('medicalHistory').optional().isArray(),
   body('allergies').optional().isArray(),
   body('medications').optional().isArray(),

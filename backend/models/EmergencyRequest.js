@@ -35,8 +35,24 @@ const emergencyRequestSchema = new mongoose.Schema({
     }
   },
   contactInfo: {
-    phone: String,
-    alternatePhone: String,
+    phone: {
+      type: String,
+      validate: {
+        validator: function(v) {
+          return !v || /^\d{10}$/.test(v);
+        },
+        message: 'Phone number must be exactly 10 digits'
+      }
+    },
+    alternatePhone: {
+      type: String,
+      validate: {
+        validator: function(v) {
+          return !v || /^\d{10}$/.test(v);
+        },
+        message: 'Phone number must be exactly 10 digits'
+      }
+    },
     emergencyContact: String
   },
   status: {

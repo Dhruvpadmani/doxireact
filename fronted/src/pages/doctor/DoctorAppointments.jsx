@@ -661,10 +661,17 @@ export default function DoctorAppointments() {
 
                 {/* Doctor Notes */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Doctor Notes</h3>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Doctor Notes</h3>
+                    <span className="text-sm text-gray-500">{doctorNotes.length}/500</span>
+                  </div>
                   <textarea
                     value={doctorNotes}
-                    onChange={(e) => setDoctorNotes(e.target.value)}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 500) {
+                        setDoctorNotes(e.target.value);
+                      }
+                    }}
                     placeholder="Add your notes about this appointment..."
                     rows={4}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
