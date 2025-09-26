@@ -70,17 +70,44 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Search doctors
+// Enhanced search doctors with filtering, sorting, and pagination
 router.get('/search', async (req, res) => {
   try {
-    const { q, specialization, location } = req.query;
-    const query = {};
+    const {
+      page = 1,
+      limit = 12,
+      sortBy = 'rating',
+      sortOrder = 'desc',
+      search: searchTerm,
+      specialization,
+      rating,
+      consultationType,
+      language,
+      minFee,
+      maxFee,
+      q
+    } = req.query;
 
-    if (q) {
+    // Build query
+    const query = {};
+    
+    if (searchTerm) {
+      query.$or = [
+        { firstName: new RegExp(searchTerm, 'i') },
+        { lastName: new RegExp(searchTerm, 'i') },
+        { specialization: new RegExp(searchTerm, 'i') },
+        { 'userId.profile.firstName': new RegExp(searchTerm, 'i') },
+        { 'userId.profile.lastName': new RegExp(searchTerm, 'i') }
+      ];
+    }
+
+    if (q) { // For backward compatibility
       query.$or = [
         { firstName: new RegExp(q, 'i') },
         { lastName: new RegExp(q, 'i') },
-        { specialization: new RegExp(q, 'i') }
+        { specialization: new RegExp(q, 'i') },
+        { 'userId.profile.firstName': new RegExp(q, 'i') },
+        { 'userId.profile.lastName': new RegExp(q, 'i') }
       ];
     }
 
@@ -88,16 +115,62 @@ router.get('/search', async (req, res) => {
       query.specialization = new RegExp(specialization, 'i');
     }
 
-    if (location) {
-      query.location = new RegExp(location, 'i');
+    if (rating) {
+      query.rating = { $gte: parseFloat(rating) };
     }
 
-    const doctors = await Doctor.find(query)
-      .select('-password')
-      .limit(20)
-      .sort({ rating: -1 });
+    if (consultationType) {
+      query['consultationTypes.type'] = consultationType;
+    }
 
-    res.json({ doctors });
+    if (language) {
+      query.languages = { $in: [language] };
+    }
+
+    if (minFee || maxFee) {
+      query.consultationFee = {};
+      if (minFee) query.consultationFee.$gte = parseFloat(minFee);
+      if (maxFee) query.consultationFee.$lte = parseFloat(maxFee);
+    }
+
+    // Determine sort order
+    const sort = {};
+    if (sortBy === 'fee') {
+      sort.consultationFee = sortOrder === 'asc' ? 1 : -1;
+    } else if (sortBy === 'experience') {
+      sort.experience = sortOrder === 'asc' ? 1 : -1;
+    } else { // Default to rating
+      sort.rating = sortOrder === 'asc' ? 1 : -1;
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const limitNum = parseInt(limit);
+
+    // Execute query
+    const [doctors, total] = await Promise.all([
+      Doctor.find(query)
+        .select('-password')
+        .populate('userId', 'profile')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum),
+      Doctor.countDocuments(query)
+    ]);
+
+    // Get filter options for the client
+    const filterOptions = await getFilterOptions();
+
+    res.json({
+      doctors,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limitNum),
+        total,
+        limit: limitNum
+      },
+      filters: filterOptions
+    });
   } catch (error) {
     console.error('Search doctors error:', error);
     res.status(500).json({
@@ -106,5 +179,46 @@ router.get('/search', async (req, res) => {
     });
   }
 });
+
+// Get filter options for the frontend
+router.get('/filter-options', async (req, res) => {
+  try {
+    const filterOptions = await getFilterOptions();
+    
+    res.json({
+      specializations: filterOptions.specializations,
+      languages: filterOptions.languages,
+      consultationTypes: filterOptions.consultationTypes
+    });
+  } catch (error) {
+    console.error('Get filter options error:', error);
+    res.status(500).json({
+      message: 'Failed to fetch filter options',
+      error: error.message
+    });
+  }
+});
+
+// Helper function to get filter options
+async function getFilterOptions() {
+  try {
+    const specializations = await Doctor.distinct('specialization');
+    const languages = await Doctor.distinct('languages');
+    const consultationTypes = await Doctor.distinct('consultationTypes.type');
+    
+    return {
+      specializations: specializations.filter(Boolean),
+      languages: languages.filter(Boolean),
+      consultationTypes: consultationTypes.filter(Boolean)
+    };
+  } catch (error) {
+    console.error('Get filter options helper error:', error);
+    return {
+      specializations: [],
+      languages: [],
+      consultationTypes: []
+    };
+  }
+}
 
 module.exports = router;

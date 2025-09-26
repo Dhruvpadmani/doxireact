@@ -330,21 +330,11 @@ const FindDoctor = () => {
               <div key={doctor._id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                 <div className="p-6">
                   {/* Doctor Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Dr. {doctor.userId?.profile?.firstName} {doctor.userId?.profile?.lastName}
-                      </h3>
-                      <p className="text-blue-600 font-medium">{doctor.specialization}</p>
-                      <p className="text-sm text-gray-600">{doctor.doctorId}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {renderStars(doctor.rating.average)}
-                      <span className="text-sm text-gray-600 ml-1">
-                        ({doctor.rating.count})
-                      </span>
-                    </div>
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Dr. {doctor.userId?.profile?.firstName} {doctor.userId?.profile?.lastName}
+                  </h3>
+                  <p className="text-blue-600 font-medium">{doctor.specialization}</p>
+                  <p className="text-sm text-gray-600">{doctor._id}</p>
 
                   {/* Doctor Info */}
                   <div className="space-y-2 mb-4">
