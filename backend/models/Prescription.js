@@ -76,7 +76,15 @@ const prescriptionSchema = new mongoose.Schema({
   pharmacy: {
     name: String,
     address: String,
-    phone: String
+    phone: {
+      type: String,
+      validate: {
+        validator: function(v) {
+          return !v || /^\d{10}$/.test(v);
+        },
+        message: 'Phone number must be exactly 10 digits'
+      }
+    }
   },
   refills: {
     allowed: {

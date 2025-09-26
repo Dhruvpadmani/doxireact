@@ -1,4 +1,5 @@
 import { createContext, useContext, useReducer, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { authAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -55,6 +56,7 @@ function authReducer(state, action) {
 
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState)
+  const navigate = useNavigate()
 
   // Check if user is logged in on app start
   useEffect(() => {
@@ -117,6 +119,18 @@ export function AuthProvider({ children }) {
       })
       
       toast.success('Login successful!')
+      
+      // Redirect based on user role
+      if (user.role === 'admin') {
+        navigate('/admin')
+      } else if (user.role === 'doctor') {
+        navigate('/doctor')
+      } else if (user.role === 'patient') {
+        navigate('/patient')
+      } else {
+        navigate('/dashboard')
+      }
+      
       return { success: true }
     } catch (error) {
       // If backend is not available, check for demo accounts
@@ -135,6 +149,18 @@ export function AuthProvider({ children }) {
         })
         
         toast.success('Demo login successful!')
+        
+        // Redirect based on user role
+        if (demoUser.role === 'admin') {
+          navigate('/admin')
+        } else if (demoUser.role === 'doctor') {
+          navigate('/doctor')
+        } else if (demoUser.role === 'patient') {
+          navigate('/patient')
+        } else {
+          navigate('/dashboard')
+        }
+        
         return { success: true }
       }
       
@@ -161,6 +187,18 @@ export function AuthProvider({ children }) {
       })
       
       toast.success('Registration successful!')
+      
+      // Redirect based on user role
+      if (user.role === 'admin') {
+        navigate('/admin')
+      } else if (user.role === 'doctor') {
+        navigate('/doctor')
+      } else if (user.role === 'patient') {
+        navigate('/patient')
+      } else {
+        navigate('/dashboard')
+      }
+      
       return { success: true }
     } catch (error) {
       // If backend is not available, create a demo account
@@ -218,6 +256,18 @@ export function AuthProvider({ children }) {
       })
       
       toast.success('Demo account created successfully!')
+      
+      // Redirect based on user role
+      if (demoUser.role === 'admin') {
+        navigate('/admin')
+      } else if (demoUser.role === 'doctor') {
+        navigate('/doctor')
+      } else if (demoUser.role === 'patient') {
+        navigate('/patient')
+      } else {
+        navigate('/dashboard')
+      }
+      
       return { success: true }
     }
   }
@@ -231,6 +281,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       dispatch({ type: 'LOGOUT' })
+      navigate('/login')
       toast.success('Logged out successfully')
     }
   }
@@ -263,6 +314,46 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Check if user is authenticated
+  const isAuthenticated = () => {
+    return !!state.user && !!state.token
+  }
+
+  // Check user role
+  const hasRole = (role) => {
+    return state.user && state.user.role === role
+  }
+
+  // Check if user has any of the specified roles
+  const hasAnyRole = (roles) => {
+    return state.user && roles.includes(state.user.role)
+  }
+
+  // Get user info
+  const getUser = () => {
+    return state.user
+  }
+
+  // Get user role
+  const getUserRole = () => {
+    return state.user ? state.user.role : null
+  }
+
+  // Check if user is admin
+  const isAdmin = () => {
+    return hasRole('admin')
+  }
+
+  // Check if user is doctor
+  const isDoctor = () => {
+    return hasRole('doctor')
+  }
+
+  // Check if user is patient
+  const isPatient = () => {
+    return hasRole('patient')
+  }
+
   const value = {
     user: state.user,
     token: state.token,
@@ -272,7 +363,15 @@ export function AuthProvider({ children }) {
     register,
     logout,
     updateProfile,
-    changePassword
+    changePassword,
+    isAuthenticated,
+    hasRole,
+    hasAnyRole,
+    getUser,
+    getUserRole,
+    isAdmin,
+    isDoctor,
+    isPatient
   }
 
   return (

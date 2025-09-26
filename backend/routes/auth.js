@@ -20,9 +20,9 @@ router.post('/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('role').isIn(['patient', 'doctor']),
-  body('profile.firstName').notEmpty().trim(),
-  body('profile.lastName').notEmpty().trim(),
-  body('profile.phone').notEmpty(),
+  body('profile.firstName').notEmpty().trim().isLength({ max: 50 }),
+  body('profile.lastName').notEmpty().trim().isLength({ max: 50 }),
+  body('profile.phone').matches(/^\d{10}$/).withMessage('Phone number must be exactly 10 digits'),
   body('profile.dateOfBirth').optional().isISO8601(),
   body('profile.gender').optional().isIn(['male', 'female', 'other'])
 ], async (req, res) => {
@@ -205,9 +205,9 @@ router.get('/me', authenticateToken, async (req, res) => {
 
 // Update user profile
 router.put('/profile', authenticateToken, [
-  body('profile.firstName').optional().notEmpty().trim(),
-  body('profile.lastName').optional().notEmpty().trim(),
-  body('profile.phone').optional().notEmpty(),
+  body('profile.firstName').optional().notEmpty().trim().isLength({ max: 50 }),
+  body('profile.lastName').optional().notEmpty().trim().isLength({ max: 50 }),
+  body('profile.phone').optional().matches(/^\d{10}$/).withMessage('Phone number must be exactly 10 digits'),
   body('profile.dateOfBirth').optional().isISO8601(),
   body('profile.gender').optional().isIn(['male', 'female', 'other'])
 ], async (req, res) => {

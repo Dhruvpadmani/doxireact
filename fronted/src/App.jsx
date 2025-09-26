@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -22,57 +22,29 @@ import BookAppointment from './pages/patient/BookAppointment'
 import StandaloneBookAppointment from './pages/BookAppointment'
 import PatientLayout from './layouts/PatientLayout'
 import LoadingSpinner from './components/LoadingSpinner'
-
-function ProtectedRoute({ children, allowedRoles }) {
-  const { user, loading } = useAuth()
-
-  if (loading) {
-    return <LoadingSpinner />
-  }
-
-  // Check if user data exists in localStorage as fallback
-  const savedUser = localStorage.getItem('user')
-  const token = localStorage.getItem('token')
-  
-  if (!user && !savedUser && !token) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />
-  }
-
-  return children
-}
+import ProtectedRoute from './components/ProtectedRoute'
+import Unauthorized from './pages/Unauthorized'
 
 function AppRoutes() {
-  const { user, loading } = useAuth()
-
-  if (loading) {
-    return <LoadingSpinner />
-  }
-
   return (
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/home" element={<LandingPage />} />
       <Route path="/find-doctor" element={<FindDoctor />} />
-      <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" replace />} />
-      <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" replace />} />
-      <Route path="/book-appointment" element={<StandaloneBookAppointment />} />
-      <Route path="/doctor-appointments" element={<StandaloneDoctorAppointments />} />
-      <Route path="/patient-dashboard" element={<StandalonePatientDashboard />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
       
       {/* Protected Routes - Redirect to role-specific dashboards */}
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'doctor', 'patient']}>
-            {console.log('Dashboard route, user role:', user?.role)}
-            {user?.role === 'admin' && <Navigate to="/admin" replace />}
-            {user?.role === 'doctor' && <Navigate to="/doctor" replace />}
-            {user?.role === 'patient' && <Navigate to="/patient" replace />}
+          <ProtectedRoute>
+            {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).role === 'admin' && <Navigate to="/admin" replace />}
+            {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).role === 'doctor' && <Navigate to="/doctor" replace />}
+            {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).role === 'patient' && <Navigate to="/patient" replace />}
+            <Navigate to="/login" replace />
           </ProtectedRoute>
         }
       />
@@ -124,10 +96,33 @@ function AppRoutes() {
         <Route path="test-auth" element={<TestAuth />} />
       </Route>
       
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Standalone Pages (Need Authentication) */}
+      <Route
+        path="/book-appointment"
+        element={
+          <ProtectedRoute>
+            <StandaloneBookAppointment />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/doctor-appointments"
+        element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <StandaloneDoctorAppointments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patient-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <StandalonePatientDashboard />
+          </ProtectedRoute>
+        }
+      />
       
-      {/* 404 Route */}
+      {/* Default redirect */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

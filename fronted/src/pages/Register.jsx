@@ -135,17 +135,24 @@ export default function Register() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  First Name
+                  First Name *
                 </label>
                 <div className="mt-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <User className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    {...register('profile.firstName', { required: 'First name is required' })}
+                    {...register('profile.firstName', { 
+                      required: 'First name is required',
+                      maxLength: {
+                        value: 50,
+                        message: 'First name must be at most 50 characters'
+                      }
+                    })}
                     type="text"
                     className="input pl-10"
                     placeholder="First name"
+                    maxLength={50}
                   />
                 </div>
                 {errors.profile?.firstName && (
@@ -154,17 +161,24 @@ export default function Register() {
               </div>
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Last Name
+                  Last Name *
                 </label>
                 <div className="mt-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <User className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    {...register('profile.lastName', { required: 'Last name is required' })}
+                    {...register('profile.lastName', { 
+                      required: 'Last name is required',
+                      maxLength: {
+                        value: 50,
+                        message: 'Last name must be at most 50 characters'
+                      }
+                    })}
                     type="text"
                     className="input pl-10"
                     placeholder="Last name"
+                    maxLength={50}
                   />
                 </div>
                 {errors.profile?.lastName && (
@@ -176,7 +190,7 @@ export default function Register() {
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Email Address
+                Email Address *
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -203,17 +217,32 @@ export default function Register() {
             {/* Phone Field */}
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Phone Number
+                Phone Number *
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Phone className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('profile.phone', { required: 'Phone number is required' })}
+                  {...register('profile.phone', { 
+                    required: 'Phone number is required',
+                    pattern: {
+                      value: /^\d{10}$/,
+                      message: 'Phone number must be exactly 10 digits'
+                    }
+                  })}
                   type="tel"
                   className="input pl-10"
                   placeholder="Enter your phone number"
+                  onInput={(e) => {
+                    // Allow only digits and limit to 10 characters
+                    let value = e.target.value.replace(/\D/g, '');
+                    if (value.length > 10) {
+                      value = value.slice(0, 10);
+                    }
+                    e.target.value = value;
+                  }}
+                  maxLength={10}
                 />
               </div>
               {errors.profile?.phone && (
@@ -231,7 +260,35 @@ export default function Register() {
                   <Calendar className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('profile.dateOfBirth')}
+                  {...register('profile.dateOfBirth', {
+                    validate: {
+                      notFuture: (value) => {
+                        if (value && new Date(value) > new Date()) {
+                          return 'Date of birth cannot be in the future';
+                        }
+                        return true;
+                      },
+                      minimumAge: (value) => {
+                        if (value) {
+                          const birthDate = new Date(value);
+                          const today = new Date();
+                          const age = today.getFullYear() - birthDate.getFullYear();
+                          const monthDiff = today.getMonth() - birthDate.getMonth();
+                          const adjustedAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) 
+                            ? age - 1 
+                            : age;
+                          
+                          if (adjustedAge < 13) {
+                            return 'You must be at least 13 years old';
+                          }
+                          if (adjustedAge > 120) {
+                            return 'Please enter a valid date of birth';
+                          }
+                        }
+                        return true;
+                      }
+                    }
+                  })}
                   type="date"
                   className="input pl-10"
                 />
@@ -243,8 +300,8 @@ export default function Register() {
               <>
                 <div>
                   <label htmlFor="specialization" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Specialization
-                  </label>
+                  Specialization *
+                </label>
                   <div className="mt-1 relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Stethoscope className="h-5 w-5 text-gray-400" />
@@ -262,7 +319,7 @@ export default function Register() {
                 </div>
                 <div>
                   <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    License Number
+                    License Number *
                   </label>
                   <div className="mt-1 relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -285,7 +342,7 @@ export default function Register() {
             {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Password
+                Password *
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -323,7 +380,7 @@ export default function Register() {
             {/* Confirm Password Field */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Confirm Password
+                Confirm Password *
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

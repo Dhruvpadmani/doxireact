@@ -674,11 +674,26 @@ export default function BookAppointment() {
                     <input
                       type="text"
                       value={appointmentData.patientName}
-                      onChange={(e) => handleInputChange('patientName', e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 100) {
+                          handleInputChange('patientName', e.target.value);
+                        }
+                      }}
                       placeholder="Enter your full name"
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       required
+                      maxLength={100}
                     />
+                    <div className="flex justify-between mt-1">
+                      <span className="text-sm text-gray-500">
+                        {appointmentData.patientName.length}/100 characters
+                      </span>
+                      {appointmentData.patientName.length >= 100 && (
+                        <span className="text-sm text-red-600">
+                          Character limit reached
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
                   <div>
@@ -693,6 +708,9 @@ export default function BookAppointment() {
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       required
                     />
+                    {appointmentData.patientEmail && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(appointmentData.patientEmail) && (
+                      <p className="mt-1 text-sm text-red-600">Please enter a valid email address</p>
+                    )}
                   </div>
                   
                   <div>
@@ -702,11 +720,21 @@ export default function BookAppointment() {
                     <input
                       type="tel"
                       value={appointmentData.patientPhone}
-                      onChange={(e) => handleInputChange('patientPhone', e.target.value)}
+                      onChange={(e) => {
+                        const inputValue = e.target.value;
+                        // Allow only digits and limit to 10 characters
+                        if (/^\d{0,10}$/.test(inputValue)) {
+                          handleInputChange('patientPhone', inputValue);
+                        }
+                      }}
                       placeholder="Enter your phone number"
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       required
+                      maxLength={10}
                     />
+                    {appointmentData.patientPhone && appointmentData.patientPhone.length !== 10 && (
+                      <p className="mt-1 text-sm text-red-600">Phone number must be exactly 10 digits</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -756,12 +784,26 @@ export default function BookAppointment() {
                     </label>
                     <textarea
                       value={appointmentData.reason}
-                      onChange={(e) => handleInputChange('reason', e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 500) {
+                          handleInputChange('reason', e.target.value);
+                        }
+                      }}
                       placeholder="Please describe the reason for your visit..."
                       rows={3}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       required
                     />
+                    <div className="flex justify-between mt-1">
+                      <span className="text-sm text-gray-500">
+                        {appointmentData.reason.length}/500 characters
+                      </span>
+                      {appointmentData.reason.length >= 500 && (
+                        <span className="text-sm text-red-600">
+                          Character limit reached
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Symptoms */}
@@ -792,22 +834,31 @@ export default function BookAppointment() {
                         className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-l-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         onKeyPress={(e) => {
                           if (e.key === 'Enter') {
-                            handleSymptomAdd(e.target.value)
-                            e.target.value = ''
+                            if (e.target.value.trim() && appointmentData.symptoms.length < 20) {
+                              handleSymptomAdd(e.target.value);
+                              e.target.value = '';
+                            }
                           }
                         }}
+                        maxLength={50}
                       />
                       <button
                         onClick={(e) => {
-                          const input = e.target.previousElementSibling
-                          handleSymptomAdd(input.value)
-                          input.value = ''
+                          const input = e.target.previousElementSibling;
+                          if (input.value.trim() && appointmentData.symptoms.length < 20) {
+                            handleSymptomAdd(input.value);
+                            input.value = '';
+                          }
                         }}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-r-lg hover:bg-primary-700 transition-colors"
+                        disabled={appointmentData.symptoms.length >= 20}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-r-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
                       >
                         Add
                       </button>
                     </div>
+                    {appointmentData.symptoms.length >= 20 && (
+                      <p className="mt-1 text-sm text-red-600">Maximum of 20 symptoms allowed</p>
+                    )}
                   </div>
 
                   {/* Duration */}
@@ -836,11 +887,25 @@ export default function BookAppointment() {
                     </label>
                     <textarea
                       value={appointmentData.notes}
-                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 1000) {
+                          handleInputChange('notes', e.target.value);
+                        }
+                      }}
                       placeholder="Any additional information you'd like to share..."
                       rows={3}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     />
+                    <div className="flex justify-between mt-1">
+                      <span className="text-sm text-gray-500">
+                        {appointmentData.notes.length}/1000 characters
+                      </span>
+                      {appointmentData.notes.length >= 1000 && (
+                        <span className="text-sm text-red-600">
+                          Character limit reached
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -866,7 +931,7 @@ export default function BookAppointment() {
                   </button>
                   <button
                     onClick={handleBookAppointment}
-                    disabled={loading || !appointmentData.reason.trim() || !appointmentData.patientName.trim() || !appointmentData.patientEmail.trim() || !appointmentData.patientPhone.trim()}
+                    disabled={loading || !appointmentData.reason.trim() || !appointmentData.patientName.trim() || !appointmentData.patientEmail.trim() || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(appointmentData.patientEmail) || !appointmentData.patientPhone.trim() || appointmentData.patientPhone.length !== 10}
                     className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                   >
                     {loading ? (
