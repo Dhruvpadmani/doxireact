@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Star, MapPin, Clock, DollarSign, Phone, Video, User, ArrowLeft } from 'lucide-react'
+import { doctorsAPI } from '../../services/api'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 const FindDoctorNew = () => {
   const [doctors, setDoctors] = useState([])
@@ -9,72 +11,77 @@ const FindDoctorNew = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [filteredDoctors, setFilteredDoctors] = useState([])
+  const [searchParams, setSearchParams] = useState({
+    page: 1,
+    limit: 20,
+    sortBy: 'rating',
+    sortOrder: 'desc'
+  })
 
   useEffect(() => {
     loadDoctors()
-  }, [])
+  }, [searchParams])
 
   const loadDoctors = async () => {
     setLoading(true)
     try {
-      // First try to load from localStorage (registered doctors)
-      const savedDoctors = localStorage.getItem('registeredDoctors')
-      let doctorsData = []
-      
-      if (savedDoctors) {
-        doctorsData = JSON.parse(savedDoctors)
+      const params = {
+        ...searchParams,
+        q: searchTerm || undefined
       }
       
-      // Add demo doctors if no registered doctors
-      if (doctorsData.length === 0) {
-        doctorsData = [
-          {
-            id: '1',
-            firstName: 'John',
-            lastName: 'Smith',
-            specialization: 'Cardiology',
-            rating: 4.8,
-            experience: 10,
-            consultationFee: 150,
-            location: 'New York',
-            availability: 'Available Today',
-            consultationTypes: ['in_person', 'video'],
-            languages: ['English', 'Spanish']
-          },
-          {
-            id: '2',
-            firstName: 'Sarah',
-            lastName: 'Johnson',
-            specialization: 'Dermatology',
-            rating: 4.9,
-            experience: 8,
-            consultationFee: 120,
-            location: 'Los Angeles',
-            availability: 'Available Tomorrow',
-            consultationTypes: ['video', 'phone'],
-            languages: ['English', 'French']
-          },
-          {
-            id: '3',
-            firstName: 'Priya',
-            lastName: 'Sharma',
-            specialization: 'Pediatrics',
-            rating: 4.7,
-            experience: 12,
-            consultationFee: 100,
-            location: 'Chicago',
-            availability: 'Available Today',
-            consultationTypes: ['in_person', 'video', 'phone'],
-            languages: ['English', 'Hindi']
-          }
-        ]
-      }
-      
-      setAllDoctors(doctorsData)
-      setDoctors(doctorsData)
+      const response = await doctorsAPI.search(params)
+      setAllDoctors(response.data.doctors || [])
+      setDoctors(response.data.doctors || [])
     } catch (error) {
       console.error('Error loading doctors:', error)
-      setDoctors([])
+      // Fallback to demo data if API fails
+      const demoDoctors = [
+        {
+          id: '1',
+          firstName: 'John',
+          lastName: 'Smith',
+          specialization: 'Cardiology',
+          rating: 4.8,
+          experience: 10,
+          consultationFee: 150,
+          location: 'New York',
+          availability: 'Available Today',
+          consultationTypes: ['in_person', 'video'],
+          languages: ['English', 'Spanish'],
+          _id: '1'
+        },
+        {
+          id: '2',
+          firstName: 'Sarah',
+          lastName: 'Johnson',
+          specialization: 'Dermatology',
+          rating: 4.9,
+          experience: 8,
+          consultationFee: 120,
+          location: 'Los Angeles',
+          availability: 'Available Tomorrow',
+          consultationTypes: ['video', 'phone'],
+          languages: ['English', 'French'],
+          _id: '2'
+        },
+        {
+          id: '3',
+          firstName: 'Priya',
+          lastName: 'Sharma',
+          specialization: 'Pediatrics',
+          rating: 4.7,
+          experience: 12,
+          consultationFee: 100,
+          location: 'Chicago',
+          availability: 'Available Today',
+          consultationTypes: ['in_person', 'video', 'phone'],
+          languages: ['English', 'Hindi'],
+          _id: '3'
+        }
+      ]
+      setAllDoctors(demoDoctors)
+      setDoctors(demoDoctors)
     } finally {
       setLoading(false)
     }
