@@ -11,24 +11,30 @@ import {
   Image, 
   File,
   Save,
-  X
+  X,
+  ArrowLeft,
+  Calendar,
+  Tag
 } from 'lucide-react'
 import { patientAPI } from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 const MedicalReports = () => {
-  const [reports, setReports] = useState([])
+  // Load reports from localStorage only
+  const [reports, setReports] = useState(() => {
+    const savedReports = localStorage.getItem('patientReports')
+    return savedReports ? JSON.parse(savedReports) : []
+  })
   const [loading, setLoading] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [selectedReport, setSelectedReport] = useState(null)
   const [uploadForm, setUploadForm] = useState({
-    title: '',
-    type: 'lab',
-    description: '',
-    testDate: '',
-    files: []
+    reportType: '',
+    reportDate: '',
+    files: [],
+    tags: ''
   })
   const [updateForm, setUpdateForm] = useState({
     title: '',
@@ -38,61 +44,46 @@ const MedicalReports = () => {
     files: []
   })
 
-  useEffect(() => {
-    loadReports()
-  }, [])
-
-  const loadReports = async () => {
-    setLoading(true)
-    try {
-      const response = await patientAPI.getReports()
-      setReports(response.data.reports)
-    } catch (error) {
-      console.error('Error loading reports:', error)
-      // Use mock data when API fails
-      setReports([
-        {
-          id: '1',
-          title: 'Blood Test Results',
-          type: 'lab',
-          status: 'completed',
-          testDate: '2024-01-15',
-          reportDate: '2024-01-16',
-          description: 'Complete blood count and lipid panel',
-          files: [
-            { name: 'blood_test.pdf', type: 'pdf', size: 245760 },
-            { name: 'lab_results.jpg', type: 'image', size: 189440 }
-          ],
-          tags: ['blood test', 'lab work']
-        },
-        {
-          id: '2',
-          title: 'X-Ray Report',
-          type: 'imaging',
-          status: 'completed',
-          testDate: '2024-01-10',
-          reportDate: '2024-01-11',
-          description: 'Chest X-ray examination',
-          files: [
-            { name: 'chest_xray.jpg', type: 'image', size: 512000 }
-          ],
-          tags: ['x-ray', 'chest']
-        }
-      ])
-    } finally {
-      setLoading(false)
-    }
-  }
+  // No need for useEffect since we load from localStorage in useState
 
   const handleUpload = async (e) => {
     e.preventDefault()
+    if (!uploadForm.reportType || !uploadForm.reportDate || uploadForm.files.length === 0) {
+      alert('Please fill in all required fields')
+      return
+    }
+
     setLoading(true)
     try {
       // Mock upload
       await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Create new report
+      const newReport = {
+        id: Date.now().toString(),
+        title: `${uploadForm.reportType} Report`,
+        type: uploadForm.reportType,
+        status: 'completed',
+        testDate: uploadForm.reportDate,
+        reportDate: new Date().toISOString().split('T')[0],
+        description: `Uploaded ${uploadForm.reportType} report`,
+        files: uploadForm.files.map(file => ({
+          name: file.name,
+          type: file.type || 'pdf',
+          size: file.size || 0
+        })),
+        tags: uploadForm.tags ? uploadForm.tags.split(',').map(tag => tag.trim()) : []
+      }
+      
+      // Add to reports list
+      const updatedReports = [newReport, ...reports]
+      setReports(updatedReports)
+      
+      // Save to localStorage
+      localStorage.setItem('patientReports', JSON.stringify(updatedReports))
+      
       setShowUploadModal(false)
-      setUploadForm({ title: '', type: 'lab', description: '', testDate: '', files: [] })
-      loadReports()
+      setUploadForm({ reportType: '', reportDate: '', files: [], tags: '' })
       alert('Report uploaded successfully!')
     } catch (error) {
       console.error('Upload failed:', error)
@@ -251,23 +242,59 @@ const MedicalReports = () => {
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+
+      <div className="p-6">
+        {/* Page Title and Upload Button */}
+        <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Medical Reports</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">View and manage your medical reports</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">View and manage your medical test reports</p>
           </div>
           <button
             onClick={() => setShowUploadModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
-            <Plus className="h-4 w-4" />
+            <Upload className="h-5 w-5" />
+            Upload Report
+          </button>
+        </div>
+
+        {/* Upload Area */}
+        <div className="mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-2 border-dashed border-purple-300 dark:border-purple-600 p-12 text-center">
+            <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Upload New Report</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              Click here to upload your medical reports (PDF, JPG, PNG)
+            </p>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors flex items-center gap-2 mx-auto"
+            >
+              <Upload className="h-5 w-5" />
             Upload Report
           </button>
         </div>
       </div>
+
+        {/* Empty State */}
+        {reports.length === 0 && (
+          <div className="text-center py-12">
+            <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No reports found</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              You haven't uploaded any medical reports yet
+            </p>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors flex items-center gap-2 mx-auto"
+            >
+              <Upload className="h-5 w-5" />
+              Upload Your First Report
+            </button>
+          </div>
+        )}
 
       {/* Reports List */}
       <div className="space-y-4">
@@ -368,74 +395,103 @@ const MedicalReports = () => {
               </button>
             </div>
             <form onSubmit={handleUpload} className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Report Title
-                  </label>
-                  <input
-                    type="text"
-                    value={uploadForm.title}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                    required
-                  />
-                </div>
+              <div className="space-y-6">
+                {/* Report Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Report Type
                   </label>
+                  <div className="relative">
                   <select
-                    value={uploadForm.type}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, type: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="lab">Lab Report</option>
-                    <option value="imaging">Imaging</option>
-                    <option value="pathology">Pathology</option>
-                    <option value="radiology">Radiology</option>
+                      value={uploadForm.reportType}
+                      onChange={(e) => setUploadForm(prev => ({ ...prev, reportType: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white appearance-none"
+                      required
+                    >
+                      <option value="">Select report type...</option>
+                      <option value="lab">Lab Report</option>
+                      <option value="imaging">Imaging Report</option>
+                      <option value="pathology">Pathology Report</option>
+                      <option value="mri">MRI</option>
+                      <option value="ct-scan">CT Scan</option>
+                      <option value="ultrasound">Ultrasound</option>
+                      <option value="ecg">ECG</option>
+                      <option value="other">Other</option>
                   </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                 </div>
+                </div>
+
+                {/* Report Date */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Description
+                    Report Date
                   </label>
-                  <textarea
-                    value={uploadForm.description}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Test Date
-                  </label>
+                  <div className="relative">
                   <input
                     type="date"
-                    value={uploadForm.testDate}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, testDate: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                      value={uploadForm.reportDate}
+                      onChange={(e) => setUploadForm(prev => ({ ...prev, reportDate: e.target.value }))}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white"
                     required
                   />
+                    <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  </div>
                 </div>
+
+                {/* Upload File */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Upload Files
+                    Upload File
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload or drag and drop</p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('file-input').click()}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Choose File
+                    </button>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {uploadForm.files.length > 0 ? `${uploadForm.files.length} file(s) selected` : 'No file chosen'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Supported formats: PDF, JPG, PNG (Max 10MB)
+                  </p>
                     <input
+                    id="file-input"
                       type="file"
                       multiple
+                    accept=".pdf,.jpg,.jpeg,.png"
                       className="hidden"
                       onChange={(e) => setUploadForm(prev => ({ ...prev, files: Array.from(e.target.files) }))}
                     />
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tags (Optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={uploadForm.tags}
+                      onChange={(e) => setUploadForm(prev => ({ ...prev, tags: e.target.value }))}
+                      placeholder="e.g., lab work, imaging, pathology"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white"
+                    />
+                    <Tag className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-6">
+              
+              <div className="flex justify-end gap-3 mt-8">
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
@@ -445,7 +501,7 @@ const MedicalReports = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
                 >
                   <Upload className="h-4 w-4" />
                   Upload Report
@@ -624,6 +680,7 @@ const MedicalReports = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

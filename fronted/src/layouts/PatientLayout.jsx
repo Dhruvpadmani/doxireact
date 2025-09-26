@@ -10,7 +10,8 @@ import {
   X,
   Heart,
   MessageCircle,
-  Bot
+  Bot,
+  Pill
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import Header from '../components/Header'
@@ -64,10 +65,6 @@ export default function PatientLayout() {
               <Stethoscope className="h-5 w-5" />
               Find Doctor
             </Link>
-            <a href="#" className="nav-item">
-              <FileText className="h-5 w-5" />
-              Prescriptions
-            </a>
             <Link 
               to="/patient/medical-reports" 
               className={`nav-item ${location.pathname === '/patient/medical-reports' ? 'active' : ''}`}
@@ -75,18 +72,31 @@ export default function PatientLayout() {
               <FileText className="h-5 w-5" />
               Reports
             </Link>
+            <Link 
+              to="/patient/medical-history" 
+              className={`nav-item ${location.pathname === '/patient/medical-history' ? 'active' : ''}`}
+            >
+              <Heart className="h-5 w-5" />
+              Medical History
+            </Link>
+            <Link 
+              to="/patient/prescriptions" 
+              className={`nav-item ${location.pathname === '/patient/prescriptions' ? 'active' : ''}`}
+            >
+              <Pill className="h-5 w-5" />
+              Prescriptions
+            </Link>
             <a href="#" className="nav-item">
               <MessageCircle className="h-5 w-5" />
               Chat
             </a>
-            <a href="#" className="nav-item">
-              <Bot className="h-5 w-5" />
-              AI Assistant
-            </a>
-            <a href="#" className="nav-item">
+            <Link 
+              to="/patient/reviews" 
+              className={`nav-item ${location.pathname === '/patient/reviews' ? 'active' : ''}`}
+            >
               <Star className="h-5 w-5" />
               Reviews
-            </a>
+            </Link>
           </div>
         </nav>
       </div>

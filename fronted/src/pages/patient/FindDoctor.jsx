@@ -1,109 +1,84 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Filter, Star, MapPin, Clock, DollarSign, Users, Award, Phone, Video, User, ArrowLeft, Calendar } from 'lucide-react'
-import { doctorsAPI } from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 const FindDoctor = () => {
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(false)
-  const [filters, setFilters] = useState({})
-  const [searchParams, setSearchParams] = useState({
-    page: 1,
-    limit: 12,
-    sortBy: 'rating',
-    sortOrder: 'desc'
-  })
-  const [pagination, setPagination] = useState({})
-  const [filterOptions, setFilterOptions] = useState({
-    specializations: [],
-    languages: [],
-    consultationTypes: []
-  })
-  const [showFilters, setShowFilters] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Load doctors and filter options
+  // Load doctors on component mount
   useEffect(() => {
     loadDoctors()
-    loadFilterOptions()
-  }, [searchParams, filters])
+  }, [])
 
   const loadDoctors = async () => {
     setLoading(true)
     try {
-      const params = {
-        ...searchParams,
-        ...filters,
-        search: searchTerm || undefined
+      // First try to load from localStorage
+      const savedDoctors = localStorage.getItem('registeredDoctors')
+      if (savedDoctors) {
+        const doctorsData = JSON.parse(savedDoctors)
+        setDoctors(doctorsData || [])
+        setLoading(false)
+        return
       }
       
-      const response = await doctorsAPI.search(params)
-      setDoctors(response.data.doctors)
-      setPagination(response.data.pagination)
-    } catch (error) {
-      console.error('Error loading doctors:', error)
-      // Use mock data when API fails
-      setDoctors([
+      // If no localStorage data, show demo doctors
+      const demoDoctors = [
         {
           id: '1',
-          firstName: 'Dr. John',
+          firstName: 'John',
           lastName: 'Smith',
-          specialization: 'Cardiologist',
+          specialization: 'Cardiology',
           rating: 4.8,
-          experience: 15,
-          location: 'New York',
+          experience: 10,
           consultationFee: 150,
-          languages: ['English', 'Spanish'],
+          location: 'New York',
+          availability: 'Available Today',
           consultationTypes: ['in_person', 'video'],
-          availability: 'Available today'
+          languages: ['English', 'Spanish']
         },
         {
           id: '2',
-          firstName: 'Dr. Sarah',
+          firstName: 'Sarah',
           lastName: 'Johnson',
-          specialization: 'Dermatologist',
+          specialization: 'Dermatology',
           rating: 4.9,
-          experience: 12,
-          location: 'Los Angeles',
+          experience: 8,
           consultationFee: 120,
-          languages: ['English'],
+          location: 'Los Angeles',
+          availability: 'Available Tomorrow',
+          consultationTypes: ['video', 'phone'],
+          languages: ['English', 'French']
+        },
+        {
+          id: '3',
+          firstName: 'Priya',
+          lastName: 'Sharma',
+          specialization: 'Pediatrics',
+          rating: 4.7,
+          experience: 12,
+          consultationFee: 100,
+          location: 'Chicago',
+          availability: 'Available Today',
           consultationTypes: ['in_person', 'video', 'phone'],
-          availability: 'Available tomorrow'
+          languages: ['English', 'Hindi']
         }
-      ])
+      ]
+      setDoctors(demoDoctors)
+    } catch (error) {
+      console.error('Error loading doctors:', error)
+      setDoctors([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadFilterOptions = async () => {
-    try {
-      // Mock filter options
-      setFilterOptions({
-        specializations: ['Cardiologist', 'Dermatologist', 'Neurologist', 'Pediatrician'],
-        languages: ['English', 'Spanish', 'French'],
-        consultationTypes: ['in_person', 'video', 'phone']
-      })
-    } catch (error) {
-      console.error('Error loading filter options:', error)
     }
   }
 
   const handleSearch = (e) => {
     e.preventDefault()
     loadDoctors()
-  }
-
-  const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }))
-  }
-
-  const handlePageChange = (page) => {
-    setSearchParams(prev => ({ ...prev, page }))
   }
 
   const getConsultationIcon = (type) => {
@@ -153,90 +128,26 @@ const FindDoctor = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search Bar */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6 mb-8">
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="mb-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search by specialization, name, or keywords..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-            >
-              Search
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              Filters
-            </button>
+        <form onSubmit={handleSearch} className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search by specialization, name, or keywords..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
           </div>
+          <button
+            type="submit"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+          >
+            Search
+          </button>
         </form>
-
-        {/* Filters */}
-        {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Specialization
-              </label>
-              <select
-                value={filters.specialization || ''}
-                onChange={(e) => handleFilterChange('specialization', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">All Specializations</option>
-                {filterOptions.specializations.map(spec => (
-                  <option key={spec} value={spec}>{spec}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Consultation Type
-              </label>
-              <select
-                value={filters.consultationType || ''}
-                onChange={(e) => handleFilterChange('consultationType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">All Types</option>
-                <option value="in_person">In-Person</option>
-                <option value="video">Video Call</option>
-                <option value="phone">Phone Call</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Language
-              </label>
-              <select
-                value={filters.language || ''}
-                onChange={(e) => handleFilterChange('language', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">All Languages</option>
-                {filterOptions.languages.map(lang => (
-                  <option key={lang} value={lang}>{lang}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Doctors List */}
@@ -321,43 +232,6 @@ const FindDoctor = () => {
               </div>
             </div>
           ))}
-
-          {/* Pagination */}
-          {pagination && pagination.pages > 1 && (
-            <div className="flex justify-center mt-8">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handlePageChange(pagination.current - 1)}
-                  disabled={pagination.current === 1}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
-                >
-                  Previous
-                </button>
-                
-                {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`px-3 py-2 rounded-lg ${
-                      pagination.current === page
-                        ? 'bg-blue-600 text-white'
-                        : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-                
-                <button
-                  onClick={() => handlePageChange(pagination.current + 1)}
-                  disabled={pagination.current === pagination.pages}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -10,15 +10,20 @@ import {
   Activity,
   Heart,
   MessageCircle,
-  Bot
+  Bot,
+  Pill
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { patientAPI } from '../../services/api'
-import { generateDemoPatientData } from '../../utils/demoData'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 export default function PatientDashboard() {
-  const [dashboardData, setDashboardData] = useState(null)
+  const [dashboardData, setDashboardData] = useState({
+    upcomingAppointments: 0,
+    medicalReports: 0,
+    activePrescriptions: 0,
+    healthScore: 0
+  })
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
 
@@ -26,17 +31,90 @@ export default function PatientDashboard() {
     fetchDashboardData()
   }, [])
 
+  // Refresh data when component becomes visible (user navigates back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchDashboardData()
+      }
+    }
+
+    const handleFocus = () => {
+      fetchDashboardData()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
+
   const fetchDashboardData = async () => {
     try {
-      const response = await patientAPI.getDashboard()
-      setDashboardData(response.data)
+      // Load appointments from localStorage first
+      const savedAppointments = localStorage.getItem('patientAppointments')
+      const localAppointments = savedAppointments ? JSON.parse(savedAppointments) : []
+      
+      // Load reports from localStorage
+      const savedReports = localStorage.getItem('patientReports')
+      const localReports = savedReports ? JSON.parse(savedReports) : []
+      
+      // Fetch other data from API
+      const [prescriptionsRes] = await Promise.all([
+        patientAPI.getPrescriptions().catch(() => ({ data: { prescriptions: [] } }))
+      ])
+
+      // Calculate upcoming appointments (future dates) from localStorage
+      const today = new Date()
+      const upcomingAppointments = localAppointments.filter(apt => {
+        const appointmentDate = new Date(apt.date)
+        return appointmentDate > today && apt.status !== 'cancelled'
+      }).length
+
+      // Count medical reports from localStorage
+      const medicalReports = localReports.length
+
+      // Count active prescriptions (not expired)
+      const activePrescriptions = prescriptionsRes.data.prescriptions?.filter(pres => 
+        !pres.isExpired && pres.status === 'active'
+      ).length || 0
+
+      // Calculate health score based on various factors
+      const healthScore = calculateHealthScore(upcomingAppointments, medicalReports, activePrescriptions)
+
+      setDashboardData({
+        upcomingAppointments,
+        medicalReports,
+        activePrescriptions,
+        healthScore
+      })
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
-      // Use demo data when API fails
-      setDashboardData(generateDemoPatientData())
+      // Keep default values (all zeros) when API fails
     } finally {
       setLoading(false)
     }
+  }
+
+  const calculateHealthScore = (appointments, reports, prescriptions) => {
+    // Simple health score calculation
+    // Base score starts at 100
+    let score = 100
+    
+    // Deduct points for overdue appointments (if any)
+    // Add points for recent reports (shows active healthcare)
+    if (reports > 0) score += 5
+    if (appointments > 0) score += 10 // Having appointments is good
+    
+    // Deduct points for too many active prescriptions (might indicate health issues)
+    if (prescriptions > 5) score -= 10
+    else if (prescriptions > 0) score += 5
+    
+    // Ensure score is between 0 and 100
+    return Math.max(0, Math.min(100, score))
   }
 
   if (loading) {
@@ -65,7 +143,7 @@ export default function PatientDashboard() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Upcoming Appointments</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardData?.upcomingAppointments || 2}
+                {dashboardData.upcomingAppointments}
               </p>
             </div>
           </div>
@@ -79,7 +157,7 @@ export default function PatientDashboard() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Medical Reports</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardData?.medicalReports || 5}
+                {dashboardData.medicalReports}
               </p>
             </div>
           </div>
@@ -93,7 +171,7 @@ export default function PatientDashboard() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Prescriptions</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardData?.activePrescriptions || 3}
+                {dashboardData.activePrescriptions}
               </p>
             </div>
           </div>
@@ -107,7 +185,7 @@ export default function PatientDashboard() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Health Score</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardData?.healthScore || 85}%
+                {dashboardData.healthScore}%
               </p>
             </div>
           </div>
@@ -140,13 +218,27 @@ export default function PatientDashboard() {
               <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-3" />
               <span className="text-sm font-medium text-gray-900 dark:text-white">View Reports</span>
             </Link>
-            <a
-              href="#"
+            <Link
+              to="/patient/reviews"
               className="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              <MessageCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 mr-3" />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Chat Support</span>
-            </a>
+              <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-3" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">Reviews & Ratings</span>
+            </Link>
+            <Link
+              to="/patient/medical-history"
+              className="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Heart className="h-5 w-5 text-red-600 dark:text-red-400 mr-3" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">Medical History</span>
+            </Link>
+            <Link
+              to="/patient/prescriptions"
+              className="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Pill className="h-5 w-5 text-orange-600 dark:text-orange-400 mr-3" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">My Prescriptions</span>
+            </Link>
           </div>
         </div>
 

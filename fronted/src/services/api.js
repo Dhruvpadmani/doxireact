@@ -213,6 +213,7 @@ export const doctorsAPI = {
   getDoctor: (id) => api.get(`/doctors/${id}`),
   getAvailability: (id, date) => 
     api.get(`/doctors/${id}/availability`, { params: { date } }),
+  getFilterOptions: () => api.get('/doctors/filter-options'),
 }
 
 export default api
