@@ -17,11 +17,13 @@ import { adminAPI } from '../../services/api'
 // Demo data removed
 import LoadingSpinner from '../../components/LoadingSpinner'
 import Header from '../../components/Header'
+import DoctorsManagement from './DoctorsManagement'
 
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [dashboardData, setDashboardData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('dashboard')
   const { user } = useAuth()
 
   useEffect(() => {
@@ -34,21 +36,25 @@ export default function AdminDashboard() {
       setDashboardData(response.data)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
-      // No demo data - show empty state
+      // Fallback to localStorage data when API fails
+      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
+      const registeredUsers = JSON.parse(localStorage.getItem('demoAccounts') || '[]');
+      const registeredAppointments = JSON.parse(localStorage.getItem('patientAppointments') || '[]');
+      
       setDashboardData({
         statistics: {
           total: {
-            users: 0,
-            doctors: 0,
-            appointments: 0
+            users: registeredUsers.length,
+            doctors: registeredDoctors.length,
+            appointments: registeredAppointments.length
           },
           emergency: {
             pending: 0
           }
         },
         recent: {
-          appointments: [],
-          users: []
+          appointments: registeredAppointments.slice(0, 5),
+          users: registeredUsers.slice(0, 5)
         }
       })
     } finally {
@@ -89,31 +95,80 @@ export default function AdminDashboard() {
 
         <nav className="mt-8 px-4">
           <div className="space-y-2">
-            <a href="#" className="nav-item active">
+            <a 
+              href="#" 
+              className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('dashboard');
+              }}
+            >
               <Activity className="h-5 w-5" />
               Dashboard
             </a>
-            <a href="#" className="nav-item">
+            <a 
+              href="#" 
+              className={`nav-item ${activeTab === 'users' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('users');
+              }}
+            >
               <Users className="h-5 w-5" />
               Users
             </a>
-            <a href="#" className="nav-item">
+            <a 
+              href="#" 
+              className={`nav-item ${activeTab === 'doctors' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('doctors');
+              }}
+            >
               <UserCheck className="h-5 w-5" />
               Doctors
             </a>
-            <a href="#" className="nav-item">
+            <a 
+              href="#" 
+              className={`nav-item ${activeTab === 'appointments' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('appointments');
+              }}
+            >
               <Calendar className="h-5 w-5" />
               Appointments
             </a>
-            <a href="#" className="nav-item">
+            <a 
+              href="#" 
+              className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('reports');
+              }}
+            >
               <FileText className="h-5 w-5" />
               Reports
             </a>
-            <a href="#" className="nav-item">
+            <a 
+              href="#" 
+              className={`nav-item ${activeTab === 'reviews' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('reviews');
+              }}
+            >
               <Star className="h-5 w-5" />
               Reviews
             </a>
-            <a href="#" className="nav-item">
+            <a 
+              href="#" 
+              className={`nav-item ${activeTab === 'emergency' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('emergency');
+              }}
+            >
               <AlertTriangle className="h-5 w-5" />
               Emergency
             </a>
@@ -132,114 +187,120 @@ export default function AdminDashboard() {
 
         {/* Dashboard Content */}
         <div className="flex-1 p-6 overflow-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">Welcome back, {user?.profile?.firstName}!</p>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="stat-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="stat-label">Total Users</p>
-                  <p className="stat-value text-primary-600">{stats.total?.users || 0}</p>
-                </div>
-                <div className="bg-primary-100 dark:bg-primary-900 p-3 rounded-full">
-                  <Users className="h-6 w-6 text-primary-600" />
-                </div>
+          {activeTab === 'dashboard' && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">Welcome back, {user?.profile?.firstName}!</p>
               </div>
-            </div>
 
-            <div className="stat-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="stat-label">Total Doctors</p>
-                  <p className="stat-value text-success-600">{stats.total?.doctors || 0}</p>
-                </div>
-                <div className="bg-success-100 dark:bg-success-900 p-3 rounded-full">
-                  <UserCheck className="h-6 w-6 text-success-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="stat-label">Total Appointments</p>
-                  <p className="stat-value text-warning-600">{stats.total?.appointments || 0}</p>
-                </div>
-                <div className="bg-warning-100 dark:bg-warning-900 p-3 rounded-full">
-                  <Calendar className="h-6 w-6 text-warning-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="stat-label">Pending Emergencies</p>
-                  <p className="stat-value text-error-600">{stats.emergency?.pending || 0}</p>
-                </div>
-                <div className="bg-error-100 dark:bg-error-900 p-3 rounded-full">
-                  <AlertTriangle className="h-6 w-6 text-error-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="dashboard-card">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Appointments</h3>
-              <div className="space-y-3">
-                {recent.appointments?.length > 0 ? (
-                  recent.appointments.map((appointment, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {appointment.patientId?.patientId || 'Unknown Patient'}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          with Dr. {appointment.doctorId?.specialization || 'Unknown Doctor'}
-                        </p>
-                      </div>
-                      <span className="badge badge-outline">
-                        {appointment.status}
-                      </span>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="stat-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="stat-label">Total Users</p>
+                      <p className="stat-value text-primary-600">{stats.total?.users || 0}</p>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">No recent appointments</p>
-                )}
-              </div>
-            </div>
-
-            <div className="dashboard-card">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Users</h3>
-              <div className="space-y-3">
-                {recent.users?.length > 0 ? (
-                  recent.users.map((user, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {user.profile?.firstName} {user.profile?.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {user.email}
-                        </p>
-                      </div>
-                      <span className={`badge ${user.role === 'admin' ? 'badge-default' : user.role === 'doctor' ? 'badge-success' : 'badge-secondary'}`}>
-                        {user.role}
-                      </span>
+                    <div className="bg-primary-100 dark:bg-primary-900 p-3 rounded-full">
+                      <Users className="h-6 w-6 text-primary-600" />
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">No recent users</p>
-                )}
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="stat-label">Total Doctors</p>
+                      <p className="stat-value text-success-600">{stats.total?.doctors || 0}</p>
+                    </div>
+                    <div className="bg-success-100 dark:bg-success-900 p-3 rounded-full">
+                      <UserCheck className="h-6 w-6 text-success-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="stat-label">Total Appointments</p>
+                      <p className="stat-value text-warning-600">{stats.total?.appointments || 0}</p>
+                    </div>
+                    <div className="bg-warning-100 dark:bg-warning-900 p-3 rounded-full">
+                      <Calendar className="h-6 w-6 text-warning-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="stat-label">Pending Emergencies</p>
+                      <p className="stat-value text-error-600">{stats.emergency?.pending || 0}</p>
+                    </div>
+                    <div className="bg-error-100 dark:bg-error-900 p-3 rounded-full">
+                      <AlertTriangle className="h-6 w-6 text-error-600" />
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+
+              {/* Recent Activity */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="dashboard-card">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Appointments</h3>
+                  <div className="space-y-3">
+                    {recent.appointments?.length > 0 ? (
+                      recent.appointments.map((appointment, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {appointment.patientId?.patientId || 'Unknown Patient'}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              with Dr. {appointment.doctorId?.specialization || 'Unknown Doctor'}
+                            </p>
+                          </div>
+                          <span className="badge badge-outline">
+                            {appointment.status}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 text-center py-4">No recent appointments</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="dashboard-card">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Users</h3>
+                  <div className="space-y-3">
+                    {recent.users?.length > 0 ? (
+                      recent.users.map((user, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {user.profile?.firstName} {user.profile?.lastName}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {user.email}
+                            </p>
+                          </div>
+                          <span className={`badge ${user.role === 'admin' ? 'badge-default' : user.role === 'doctor' ? 'badge-success' : 'badge-secondary'}`}>
+                            {user.role}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 text-center py-4">No recent users</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'doctors' && <DoctorsManagement />}
         </div>
       </div>
     </div>

@@ -11,136 +11,16 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  MessageCircle,
   FileText,
-  Star,
-  Filter,
   Search,
-  ChevronDown,
-  ChevronUp,
-  AlertCircle,
-  CalendarDays,
-  Stethoscope,
-  Heart,
-  Activity
+  Download,
+  X
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { doctorAPI, reportsAPI } from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
-import Header from '../../components/Header'
 
-// Demo appointments data
-const demoAppointments = [
-  {
-    id: 'APT000001',
-    patientName: 'Priya Sharma',
-    patientEmail: 'priya.sharma@email.com',
-    patientPhone: '+91 98765 43210',
-    appointmentDate: '2024-01-15',
-    appointmentTime: '10:00',
-    type: 'in_person',
-    reason: 'Regular checkup and blood pressure monitoring',
-    symptoms: ['Headache', 'Dizziness', 'Fatigue'],
-    duration: 30,
-    notes: 'Patient has been experiencing frequent headaches for the past week',
-    status: 'scheduled',
-    payment: {
-      amount: 1500,
-      status: 'pending'
-    },
-    createdAt: '2024-01-10T09:30:00Z',
-    doctorNotes: '',
-    followUpRequired: false,
-    followUpDate: null
-  },
-  {
-    id: 'APT000002',
-    patientName: 'Rajesh Kumar',
-    patientEmail: 'rajesh.kumar@email.com',
-    patientPhone: '+91 87654 32109',
-    appointmentDate: '2024-01-15',
-    appointmentTime: '11:30',
-    type: 'video',
-    reason: 'Follow-up consultation for diabetes management',
-    symptoms: ['High blood sugar', 'Increased thirst'],
-    duration: 45,
-    notes: 'Patient needs to discuss medication adjustments',
-    status: 'confirmed',
-    payment: {
-      amount: 1200,
-      status: 'paid'
-    },
-    createdAt: '2024-01-12T14:20:00Z',
-    doctorNotes: 'Patient responding well to current medication',
-    followUpRequired: true,
-    followUpDate: '2024-02-15'
-  },
-  {
-    id: 'APT000003',
-    patientName: 'Anita Patel',
-    patientEmail: 'anita.patel@email.com',
-    patientPhone: '+91 76543 21098',
-    appointmentDate: '2024-01-16',
-    appointmentTime: '09:00',
-    type: 'phone',
-    reason: 'Emergency consultation for chest pain',
-    symptoms: ['Chest pain', 'Shortness of breath', 'Nausea'],
-    duration: 20,
-    notes: 'Patient called for urgent consultation',
-    status: 'pending',
-    payment: {
-      amount: 1000,
-      status: 'pending'
-    },
-    createdAt: '2024-01-14T08:15:00Z',
-    doctorNotes: '',
-    followUpRequired: false,
-    followUpDate: null
-  },
-  {
-    id: 'APT000004',
-    patientName: 'Vikram Singh',
-    patientEmail: 'vikram.singh@email.com',
-    patientPhone: '+91 65432 10987',
-    appointmentDate: '2024-01-16',
-    appointmentTime: '14:00',
-    type: 'in_person',
-    reason: 'Annual health checkup',
-    symptoms: [],
-    duration: 60,
-    notes: 'Comprehensive health assessment required',
-    status: 'scheduled',
-    payment: {
-      amount: 1500,
-      status: 'paid'
-    },
-    createdAt: '2024-01-13T16:45:00Z',
-    doctorNotes: '',
-    followUpRequired: false,
-    followUpDate: null
-  },
-  {
-    id: 'APT000005',
-    patientName: 'Sunita Gupta',
-    patientEmail: 'sunita.gupta@email.com',
-    patientPhone: '+91 54321 09876',
-    appointmentDate: '2024-01-17',
-    appointmentTime: '16:30',
-    type: 'video',
-    reason: 'Mental health consultation',
-    symptoms: ['Anxiety', 'Sleep issues', 'Mood swings'],
-    duration: 60,
-    notes: 'Patient seeking help for anxiety and depression',
-    status: 'cancelled',
-    payment: {
-      amount: 1800,
-      status: 'refunded'
-    },
-    createdAt: '2024-01-11T11:20:00Z',
-    doctorNotes: 'Patient cancelled due to personal reasons',
-    followUpRequired: false,
-    followUpDate: null
-  }
-]
+// No demo data - using real API data only
 
 export default function DoctorAppointments() {
   const [appointments, setAppointments] = useState([])
@@ -148,12 +28,15 @@ export default function DoctorAppointments() {
   const [loading, setLoading] = useState(true)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
+  const [showPatientDetails, setShowPatientDetails] = useState(false)
+  const [showReports, setShowReports] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [doctorNotes, setDoctorNotes] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+  const [patientReports, setPatientReports] = useState([])
+  const [reportsLoading, setReportsLoading] = useState(false)
   const { user } = useAuth()
 
   useEffect(() => {
@@ -167,20 +50,30 @@ export default function DoctorAppointments() {
   const fetchAppointments = async () => {
     try {
       setLoading(true)
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // Load from localStorage if available, otherwise use demo data
-      const savedAppointments = localStorage.getItem('demoAppointments')
-      if (savedAppointments) {
-        const parsedAppointments = JSON.parse(savedAppointments)
-        setAppointments(parsedAppointments)
+      // First try to load from global appointments (booked by patients)
+      const globalAppointments = JSON.parse(localStorage.getItem('globalAppointments') || '[]')
+      
+      if (globalAppointments.length > 0) {
+        // Filter appointments for current doctor
+        const doctorAppointments = globalAppointments.filter(apt => apt.doctorId === user.id)
+        setAppointments(doctorAppointments)
       } else {
-        setAppointments(demoAppointments)
+        // If no global appointments, try API
+        try {
+          const response = await doctorAPI.getAppointments()
+          if (response.data && response.data.appointments) {
+            setAppointments(response.data.appointments)
+          } else {
+            setAppointments([])
+          }
+        } catch (apiError) {
+          setAppointments([])
+        }
       }
     } catch (error) {
       console.error('Failed to fetch appointments:', error)
-      setAppointments(demoAppointments)
+      setAppointments([])
     } finally {
       setLoading(false)
     }
@@ -215,9 +108,24 @@ export default function DoctorAppointments() {
     try {
       setActionLoading(true)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Update global appointments
+      const globalAppointments = JSON.parse(localStorage.getItem('globalAppointments') || '[]')
+      const updatedGlobalAppointments = globalAppointments.map(apt => {
+        if (apt.id === appointmentId) {
+          return {
+            ...apt,
+            status: action,
+            doctorNotes: doctorNotes || apt.doctorNotes,
+            updatedAt: new Date().toISOString()
+          }
+        }
+        return apt
+      })
       
+      // Save updated global appointments
+      localStorage.setItem('globalAppointments', JSON.stringify(updatedGlobalAppointments))
+      
+      // Update local state
       const updatedAppointments = appointments.map(apt => {
         if (apt.id === appointmentId) {
           return {
@@ -232,8 +140,22 @@ export default function DoctorAppointments() {
       
       setAppointments(updatedAppointments)
       
-      // Update localStorage
-      localStorage.setItem('demoAppointments', JSON.stringify(updatedAppointments))
+      // Also update patient appointments if they exist (user-specific)
+      const patientAppointments = JSON.parse(localStorage.getItem(`patientAppointments_${selectedAppointment.patientId}`) || '[]')
+      const updatedPatientAppointments = patientAppointments.map(apt => {
+        if (apt.id === appointmentId) {
+          return {
+            ...apt,
+            status: action,
+            doctorNotes: doctorNotes || apt.doctorNotes,
+            updatedAt: new Date().toISOString()
+          }
+        }
+        return apt
+      })
+      localStorage.setItem(`patientAppointments_${selectedAppointment.patientId}`, JSON.stringify(updatedPatientAppointments))
+      
+      console.log('✅ Appointment updated in global appointments:', action)
       
       // Close details modal
       setShowDetails(false)
@@ -253,6 +175,28 @@ export default function DoctorAppointments() {
     setSelectedAppointment(appointment)
     setDoctorNotes(appointment.doctorNotes || '')
     setShowDetails(true)
+  }
+
+  const handleViewPatientDetails = (appointment) => {
+    setSelectedAppointment(appointment)
+    setShowPatientDetails(true)
+  }
+
+  const handleViewReports = async (appointment) => {
+    setSelectedAppointment(appointment)
+    setShowReports(true)
+    setReportsLoading(true)
+    
+    try {
+      // Simulate API call for patient reports
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      setPatientReports(appointment.reports || [])
+    } catch (error) {
+      console.error('Failed to fetch patient reports:', error)
+      setPatientReports([])
+    } finally {
+      setReportsLoading(false)
+    }
   }
 
   const getStatusColor = (status) => {
@@ -302,64 +246,13 @@ export default function DoctorAppointments() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
-      {/* Sidebar */}
-      <div className={`w-64 bg-white dark:bg-gray-800 shadow-lg flex-shrink-0 ${sidebarOpen ? 'block' : 'hidden'} lg:block`}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="bg-primary-600 p-2 rounded-lg">
-              <Stethoscope className="h-6 w-6 text-white" />
-            </div>
-            <span className="ml-3 text-xl font-semibold text-gray-900 dark:text-white">DOXI Doctor</span>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
+    <div className="p-6">
+           {/* Header */}
+           <div className="mb-8">
+             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Appointments</h1>
+             <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your patient appointments</p>
+           </div>
 
-        <nav className="mt-8 px-4">
-          <div className="space-y-2">
-            <a href="/doctor-appointments" className="nav-item">
-              <Activity className="h-5 w-5" />
-              Dashboard
-            </a>
-            <a href="#" className="nav-item active">
-              <Calendar className="h-5 w-5" />
-              Appointments
-            </a>
-            <a href="#" className="nav-item">
-              <User className="h-5 w-5" />
-              Patients
-            </a>
-            <a href="#" className="nav-item">
-              <FileText className="h-5 w-5" />
-              Prescriptions
-            </a>
-            <a href="#" className="nav-item">
-              <MessageCircle className="h-5 w-5" />
-              Chat
-            </a>
-          </div>
-        </nav>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <Header 
-          sidebarOpen={sidebarOpen} 
-          setSidebarOpen={setSidebarOpen} 
-          userRole="doctor" 
-        />
-
-        <div className="flex-1 p-6 overflow-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Appointments</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your patient appointments</p>
-          </div>
 
           {/* Filters */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
@@ -492,16 +385,36 @@ export default function DoctorAppointments() {
                     </div>
 
                     <div className="flex flex-col gap-2 ml-4">
-                      <button
-                        onClick={() => handleViewDetails(appointment)}
-                        className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg transition-colors"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View Details
-                      </button>
+                      {/* Three Main Action Buttons */}
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => handleViewDetails(appointment)}
+                          className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg transition-colors border border-blue-200 dark:border-blue-700"
+                        >
+                          <Eye className="h-4 w-4" />
+                          See Details
+                        </button>
+                        
+                        <button
+                          onClick={() => handleViewPatientDetails(appointment)}
+                          className="flex items-center gap-2 px-4 py-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900 rounded-lg transition-colors border border-purple-200 dark:border-purple-700"
+                        >
+                          <User className="h-4 w-4" />
+                          Patient Info
+                        </button>
+                        
+                        <button
+                          onClick={() => handleViewReports(appointment)}
+                          className="flex items-center gap-2 px-4 py-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900 rounded-lg transition-colors border border-green-200 dark:border-green-700"
+                        >
+                          <FileText className="h-4 w-4" />
+                          View Reports
+                        </button>
+                      </div>
                       
+                      {/* Status-based Actions */}
                       {appointment.status === 'pending' && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 mt-2">
                           <button
                             onClick={() => handleAppointmentAction(appointment.id, 'confirmed')}
                             disabled={actionLoading}
@@ -525,7 +438,7 @@ export default function DoctorAppointments() {
                         <button
                           onClick={() => handleAppointmentAction(appointment.id, 'confirmed')}
                           disabled={actionLoading}
-                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 mt-2"
                         >
                           <CheckCircle className="h-4 w-4" />
                           Confirm
@@ -536,7 +449,7 @@ export default function DoctorAppointments() {
                         <button
                           onClick={() => handleAppointmentAction(appointment.id, 'completed')}
                           disabled={actionLoading}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 mt-2"
                         >
                           <CheckCircle className="h-4 w-4" />
                           Mark Complete
@@ -554,9 +467,6 @@ export default function DoctorAppointments() {
               </div>
             )}
           </div>
-        </div>
-      </div>
-
       {/* Appointment Details Modal */}
       {showDetails && selectedAppointment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -731,6 +641,215 @@ export default function DoctorAppointments() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Patient Details Modal */}
+      {showPatientDetails && selectedAppointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Patient Details - {selectedAppointment.patientName}
+                </h2>
+                <button
+                  onClick={() => setShowPatientDetails(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Basic Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Patient ID</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientId}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Age</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientAge} years</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Gender</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientGender}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientEmail}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientPhone}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Medical History */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Medical History</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Conditions</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedAppointment.patientDetails?.medicalHistory?.map((condition, index) => (
+                          <span key={index} className="px-3 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full text-sm">
+                            {condition}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Allergies</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedAppointment.patientDetails?.allergies?.map((allergy, index) => (
+                          <span key={index} className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full text-sm">
+                            {allergy}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Current Medications</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedAppointment.patientDetails?.medications?.map((medication, index) => (
+                          <span key={index} className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
+                            {medication}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Emergency Contact */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Emergency Contact</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientDetails?.emergencyContact?.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Relationship</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientDetails?.emergencyContact?.relationship}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{selectedAppointment.patientDetails?.emergencyContact?.phone}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Patient Reports Modal */}
+      {showReports && selectedAppointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Patient Reports - {selectedAppointment.patientName}
+                </h2>
+                <button
+                  onClick={() => setShowReports(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {reportsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <LoadingSpinner size="lg" />
+                </div>
+              ) : patientReports.length > 0 ? (
+                <div className="space-y-6">
+                  {patientReports.map((report) => (
+                    <div key={report.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{report.title}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {report.type.replace('_', ' ').toUpperCase()} • {new Date(report.testDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            report.status === 'completed' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                          }`}>
+                            {report.status}
+                          </span>
+                          <button className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                            <Download className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {report.results && report.results.length > 0 && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200 dark:border-gray-700">
+                                <th className="text-left py-2 font-medium text-gray-900 dark:text-white">Test Name</th>
+                                <th className="text-left py-2 font-medium text-gray-900 dark:text-white">Value</th>
+                                <th className="text-left py-2 font-medium text-gray-900 dark:text-white">Unit</th>
+                                <th className="text-left py-2 font-medium text-gray-900 dark:text-white">Normal Range</th>
+                                <th className="text-left py-2 font-medium text-gray-900 dark:text-white">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {report.results.map((result, index) => (
+                                <tr key={index} className="border-b border-gray-100 dark:border-gray-800">
+                                  <td className="py-2 text-gray-900 dark:text-white">{result.testName}</td>
+                                  <td className="py-2 text-gray-900 dark:text-white font-medium">{result.value}</td>
+                                  <td className="py-2 text-gray-500 dark:text-gray-400">{result.unit || '-'}</td>
+                                  <td className="py-2 text-gray-500 dark:text-gray-400">{result.normalRange || '-'}</td>
+                                  <td className="py-2">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      result.status === 'normal' 
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                        : result.status === 'abnormal'
+                                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                    }`}>
+                                      {result.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No reports available</h3>
+                  <p className="text-gray-500 dark:text-gray-400">This patient has no medical reports on file</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

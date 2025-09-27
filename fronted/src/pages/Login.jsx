@@ -24,9 +24,7 @@ export default function Login() {
     const result = await login(data.email, data.password)
     setIsLoading(false)
     
-    if (result.success) {
-      navigate('/dashboard')
-    }
+    // Navigation is handled inside the login function in AuthContext
   }
 
   return (

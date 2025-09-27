@@ -35,9 +35,7 @@ export default function Register() {
     const result = await registerUser(data)
     setIsLoading(false)
     
-    if (result.success) {
-      navigate('/dashboard')
-    }
+    // Navigation is handled inside the register function in AuthContext
   }
 
   return (

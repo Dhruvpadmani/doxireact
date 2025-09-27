@@ -116,9 +116,15 @@ export default function LandingPage() {
               
               <Link
                 to="/login"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="text-gray-700 dark:text-gray-300 hover:text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 Login
+              </Link>
+              <Link
+                to="/register"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Register
               </Link>
             </div>
 
@@ -143,9 +149,15 @@ export default function LandingPage() {
               <a href="#contact" className="block px-3 py-2 text-gray-700 dark:text-gray-300">Contact</a>
               <Link
                 to="/login"
-                className="block px-3 py-2 bg-blue-600 text-white rounded-lg mx-3 text-center"
+                className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg mx-3 text-center"
               >
                 Login
+              </Link>
+              <Link
+                to="/register"
+                className="block px-3 py-2 bg-blue-600 text-white rounded-lg mx-3 text-center"
+              >
+                Register
               </Link>
             </div>
           </div>
@@ -166,24 +178,18 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to="/patient-dashboard"
+                to="/login"
                 className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
               >
-                Patient Panel
+                Login
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
               <Link
-                to="/doctor-appointments"
+                to="/register"
                 className="bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center"
               >
-                Doctor Panel
+                Register
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-              <Link
-                to="/login"
-                className="border-2 border-blue-600 text-blue-600 dark:text-blue-400 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-              >
-                Login
               </Link>
             </div>
           </div>
@@ -334,24 +340,18 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/patient-dashboard"
+              to="/login"
               className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
             >
-              Patient Panel
+              Login
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
             <Link
-              to="/doctor-appointments"
+              to="/register"
               className="bg-green-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-600 transition-colors inline-flex items-center"
             >
-              Doctor Panel
+              Register
               <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-            <Link
-              to="/login"
-              className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors inline-flex items-center"
-            >
-              Login
             </Link>
           </div>
         </div>

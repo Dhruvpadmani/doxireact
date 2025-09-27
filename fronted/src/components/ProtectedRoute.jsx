@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // ProtectedRoute component for route-level protection
@@ -8,10 +8,20 @@ export default function ProtectedRoute({
   allowedRoles = [],
   redirectTo = '/login'
 }) {
-  const { isAuthenticated, hasAnyRole, loading } = useAuth();
+  const { isAuthenticated, hasAnyRole, loading, user } = useAuth();
+
+  console.log('🛡️ ProtectedRoute check:', {
+    loading,
+    isAuthenticated: isAuthenticated(),
+    user: user?.email,
+    userRole: user?.role,
+    allowedRoles,
+    currentPath: window.location.pathname
+  });
 
   // Show loading spinner while checking auth status
   if (loading) {
+    console.log('⏳ Showing loading spinner...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="xl" />
@@ -19,16 +29,22 @@ export default function ProtectedRoute({
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated()) {
+  // Check if user is authenticated
+  const isUserAuthenticated = isAuthenticated();
+  
+  // If not authenticated, redirect to login
+  if (!isUserAuthenticated) {
+    console.log('❌ User not authenticated, redirecting to login');
     return <Navigate to={redirectTo} replace />;
   }
 
-  // Redirect to unauthorized if user doesn't have required role
+  // If user is authenticated but doesn't have required role, redirect to unauthorized
   if (allowedRoles.length > 0 && !hasAnyRole(allowedRoles)) {
+    console.log('❌ User does not have required role, redirecting to unauthorized');
     return <Navigate to="/unauthorized" replace />;
   }
 
+  console.log('✅ User authenticated and authorized, rendering children');
   // Render children if all checks pass
   return children;
 }

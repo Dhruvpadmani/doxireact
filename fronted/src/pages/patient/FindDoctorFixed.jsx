@@ -43,35 +43,23 @@ const FindDoctor = () => {
       setPagination(response.data.pagination)
     } catch (error) {
       console.error('Error loading doctors:', error)
-      // Use mock data when API fails
-      setDoctors([
-        {
-          id: '1',
-          firstName: 'Dr. John',
-          lastName: 'Smith',
-          specialization: 'Cardiologist',
-          rating: 4.8,
-          experience: 15,
-          location: 'New York',
-          consultationFee: 150,
-          languages: ['English', 'Spanish'],
-          consultationTypes: ['in_person', 'video'],
-          availability: 'Available today'
-        },
-        {
-          id: '2',
-          firstName: 'Dr. Sarah',
-          lastName: 'Johnson',
-          specialization: 'Dermatologist',
-          rating: 4.9,
-          experience: 12,
-          location: 'Los Angeles',
-          consultationFee: 120,
-          languages: ['English'],
-          consultationTypes: ['in_person', 'video', 'phone'],
-          availability: 'Available tomorrow'
-        }
-      ])
+      // Fallback to registered doctors from localStorage if API fails
+      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
+      const formattedDoctors = registeredDoctors.map(doctor => ({
+        id: doctor.id,
+        firstName: doctor.profile.firstName || 'Unknown',
+        lastName: doctor.profile.lastName || 'Doctor',
+        specialization: doctor.specialization,
+        rating: doctor.rating?.average || 0,
+        experience: doctor.experience || 0,
+        location: doctor.profile.location || 'Not specified',
+        consultationFee: doctor.consultationFee || 0,
+        languages: doctor.languages,
+        consultationTypes: doctor.profile.consultationTypes || ['in_person'], 
+        availability: 'Available Today'
+      }));
+      
+      setDoctors(formattedDoctors)
     } finally {
       setLoading(false)
     }
@@ -79,14 +67,31 @@ const FindDoctor = () => {
 
   const loadFilterOptions = async () => {
     try {
-      // Mock filter options
+      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
+      if (registeredDoctors.length > 0) {
+        const specializations = [...new Set(registeredDoctors.map(d => d.specialization))].filter(Boolean);
+        const languages = [...new Set(registeredDoctors.flatMap(d => d.languages || []))].filter(Boolean);
+        setFilterOptions({
+          specializations,
+          languages,
+          consultationTypes: ['in_person', 'video', 'phone']
+        });
+      } else {
+        // Default filter options
+        setFilterOptions({
+          specializations: ['Cardiologist', 'Dermatologist', 'Neurologist', 'Pediatrician'],
+          languages: ['English', 'Spanish', 'French'],
+          consultationTypes: ['in_person', 'video', 'phone']
+        });
+      }
+    } catch (error) {
+      console.error('Error loading filter options:', error)
+      // Default filter options
       setFilterOptions({
         specializations: ['Cardiologist', 'Dermatologist', 'Neurologist', 'Pediatrician'],
         languages: ['English', 'Spanish', 'French'],
         consultationTypes: ['in_person', 'video', 'phone']
-      })
-    } catch (error) {
-      console.error('Error loading filter options:', error)
+      });
     }
   }
 

@@ -61,43 +61,67 @@ export function AuthProvider({ children }) {
   // Check if user is logged in on app start
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('🔍 Checking authentication on app start...')
       const token = localStorage.getItem('token')
       const savedUser = localStorage.getItem('user')
       
+      console.log('📝 Token exists:', !!token)
+      console.log('👤 User data exists:', !!savedUser)
+      
       if (token && savedUser) {
         try {
-          // Try to validate with backend first
-          const response = await authAPI.getProfile()
+          const userData = JSON.parse(savedUser)
+          console.log('✅ Using saved user data immediately:', userData.email)
+          
+          // First, set the user as authenticated with saved data
           dispatch({
             type: 'AUTH_SUCCESS',
             payload: {
-              user: response.data.user,
+              user: userData,
               token
             }
           })
-        } catch (error) {
-          // If backend fails, use saved user data as fallback
-          console.log('Backend auth failed, using saved user data:', error.message)
+          
+          // Add a small delay to ensure state is updated
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          // Then try to validate with backend in background
+          console.log('🔄 Attempting backend validation in background...')
           try {
-            const userData = JSON.parse(savedUser)
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), 3000)
+            )
+            
+            const response = await Promise.race([
+              authAPI.getProfile(),
+              timeoutPromise
+            ])
+            
+            console.log('✅ Backend validation successful, updating user data')
             dispatch({
               type: 'AUTH_SUCCESS',
               payload: {
-                user: userData,
+                user: response.data.user,
                 token
               }
             })
-          } catch (parseError) {
-            // If saved user data is invalid, clear everything
-            localStorage.removeItem('token')
-            localStorage.removeItem('user')
-            dispatch({
-              type: 'AUTH_FAILURE',
-              payload: 'Session expired'
-            })
+          } catch (backendError) {
+            console.log('⚠️ Backend validation failed, keeping saved data:', backendError.message)
+            // Keep the saved user data, don't change anything
           }
+        } catch (parseError) {
+          // If saved user data is invalid, clear everything
+          console.log('❌ Invalid saved user data, clearing storage')
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          dispatch({
+            type: 'AUTH_FAILURE',
+            payload: 'Session expired'
+          })
         }
       } else {
+        // No token or user data, set loading to false
+        console.log('❌ No token or user data found')
         dispatch({ type: 'AUTH_FAILURE', payload: null })
       }
     }
@@ -244,6 +268,8 @@ export function AuthProvider({ children }) {
         const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]')
         registeredDoctors.push(doctorData)
         localStorage.setItem('registeredDoctors', JSON.stringify(registeredDoctors))
+        console.log('✅ Doctor saved to localStorage:', doctorData)
+        console.log('📋 Total registered doctors:', registeredDoctors.length)
       }
       
       const demoToken = 'demo-token-' + Date.now()
