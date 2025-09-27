@@ -42,6 +42,29 @@ const FindDoctor = () => {
       setPagination(response.data.pagination)
     } catch (error) {
       console.error('Error loading doctors:', error)
+      // Fallback to registered doctors from localStorage if API fails
+      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
+      const formattedDoctors = registeredDoctors.map(doctor => ({
+        id: doctor.id,
+        userId: {
+          profile: {
+            firstName: doctor.profile.firstName || 'Unknown',
+            lastName: doctor.profile.lastName || 'Doctor'
+          }
+        },
+        specialization: doctor.specialization,
+        experience: doctor.experience || 0,
+        consultationFee: doctor.consultationFee || 0,
+        languages: doctor.languages,
+        bio: doctor.bio,
+        consultationTypes: [{ type: 'video', fee: doctor.consultationFee || 0 }], // Default format
+        rating: doctor.rating?.average || 0,
+        _id: doctor.id,
+        isVerified: doctor.isVerified
+      }));
+      
+      setDoctors(formattedDoctors);
+      setPagination({ total: formattedDoctors.length, pages: 1, current: 1 });
     } finally {
       setLoading(false)
     }
@@ -53,6 +76,17 @@ const FindDoctor = () => {
       setFilterOptions(response.data.filters)
     } catch (error) {
       console.error('Error loading filter options:', error)
+      // Fallback to generate filter options from registered doctors
+      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
+      if (registeredDoctors.length > 0) {
+        const specializations = [...new Set(registeredDoctors.map(d => d.specialization))].filter(Boolean);
+        const languages = [...new Set(registeredDoctors.flatMap(d => d.languages || []))].filter(Boolean);
+        setFilterOptions({
+          specializations,
+          languages,
+          consultationTypes: ['in_person', 'video', 'phone']
+        });
+      }
     }
   }
 

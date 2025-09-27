@@ -25,63 +25,48 @@ const FindDoctorNew = () => {
   const loadDoctors = async () => {
     setLoading(true)
     try {
-      const params = {
-        ...searchParams,
-        q: searchTerm || undefined
-      }
+      // First try to load from localStorage (registered doctors)
+      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
+      console.log('Found registered doctors:', registeredDoctors);
       
-      const response = await doctorsAPI.search(params)
-      setAllDoctors(response.data.doctors || [])
-      setDoctors(response.data.doctors || [])
+      if (registeredDoctors.length > 0) {
+        const formattedDoctors = registeredDoctors.map(doctor => ({
+          id: doctor.id,
+          firstName: doctor.profile?.firstName || 'Unknown',
+          lastName: doctor.profile?.lastName || 'Doctor',
+          specialization: doctor.specialization || 'General Medicine',
+          rating: doctor.rating?.average || 0,
+          experience: doctor.experience || 0,
+          consultationFee: doctor.consultationFee || 0,
+          location: doctor.profile?.location || 'Not specified',
+          availability: 'Available Today',
+          consultationTypes: doctor.profile?.consultationTypes || ['in_person'], 
+          languages: doctor.languages || ['English'],
+          _id: doctor.id,
+          bio: doctor.bio || '',
+          licenseNumber: doctor.licenseNumber || '',
+          isVerified: doctor.isVerified || false
+        }));
+        
+        console.log('Formatted doctors:', formattedDoctors);
+        setAllDoctors(formattedDoctors)
+        setDoctors(formattedDoctors)
+      } else {
+        // If no registered doctors, try API
+        const params = {
+          ...searchParams,
+          q: searchTerm || undefined
+        }
+        
+        const response = await doctorsAPI.search(params)
+        setAllDoctors(response.data.doctors || [])
+        setDoctors(response.data.doctors || [])
+      }
     } catch (error) {
       console.error('Error loading doctors:', error)
-      // Fallback to demo data if API fails
-      const demoDoctors = [
-        {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Smith',
-          specialization: 'Cardiology',
-          rating: 4.8,
-          experience: 10,
-          consultationFee: 150,
-          location: 'New York',
-          availability: 'Available Today',
-          consultationTypes: ['in_person', 'video'],
-          languages: ['English', 'Spanish'],
-          _id: '1'
-        },
-        {
-          id: '2',
-          firstName: 'Sarah',
-          lastName: 'Johnson',
-          specialization: 'Dermatology',
-          rating: 4.9,
-          experience: 8,
-          consultationFee: 120,
-          location: 'Los Angeles',
-          availability: 'Available Tomorrow',
-          consultationTypes: ['video', 'phone'],
-          languages: ['English', 'French'],
-          _id: '2'
-        },
-        {
-          id: '3',
-          firstName: 'Priya',
-          lastName: 'Sharma',
-          specialization: 'Pediatrics',
-          rating: 4.7,
-          experience: 12,
-          consultationFee: 100,
-          location: 'Chicago',
-          availability: 'Available Today',
-          consultationTypes: ['in_person', 'video', 'phone'],
-          languages: ['English', 'Hindi'],
-          _id: '3'
-        }
-      ]
-      setAllDoctors(demoDoctors)
-      setDoctors(demoDoctors)
+      // If both localStorage and API fail, show empty state
+      setAllDoctors([])
+      setDoctors([])
     } finally {
       setLoading(false)
     }
@@ -269,9 +254,10 @@ const FindDoctorNew = () => {
         </form>
       </div>
 
+
       {/* Doctors List */}
       <div className="space-y-6">
-        {doctors.map((doctor) => (
+        {doctors.length > 0 ? doctors.map((doctor) => (
           <div key={doctor.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-4">
@@ -345,7 +331,15 @@ const FindDoctorNew = () => {
               </div>
             </div>
           </div>
-        ))}
+        )) : (
+          <div className="text-center py-12">
+            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No doctors found</h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              No registered doctors available. Please register as a doctor first.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

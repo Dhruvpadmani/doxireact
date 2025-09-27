@@ -43,24 +43,31 @@ export default function PatientDashboard() {
       fetchDashboardData()
     }
 
+    // Also refresh when user navigates back to dashboard
+    const handlePopState = () => {
+      fetchDashboardData()
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
+    window.addEventListener('popstate', handlePopState)
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('popstate', handlePopState)
     }
   }, [])
 
   const fetchDashboardData = async () => {
     try {
-      // Load appointments from localStorage first
-      const savedAppointments = localStorage.getItem('patientAppointments')
-      const localAppointments = savedAppointments ? JSON.parse(savedAppointments) : []
+      // Load appointments from localStorage - user specific
+      const userSpecificAppointments = localStorage.getItem(`patientAppointments_${user.id}`)
+      const localAppointments = userSpecificAppointments ? JSON.parse(userSpecificAppointments) : []
       
-      // Load reports from localStorage
-      const savedReports = localStorage.getItem('patientReports')
-      const localReports = savedReports ? JSON.parse(savedReports) : []
+      // Load reports from localStorage - user specific
+      const userSpecificReports = localStorage.getItem(`patientReports_${user.id}`)
+      const localReports = userSpecificReports ? JSON.parse(userSpecificReports) : []
       
       // Fetch other data from API
       const [prescriptionsRes] = await Promise.all([
@@ -70,9 +77,14 @@ export default function PatientDashboard() {
       // Calculate upcoming appointments (future dates) from localStorage
       const today = new Date()
       const upcomingAppointments = localAppointments.filter(apt => {
-        const appointmentDate = new Date(apt.date)
+        const appointmentDate = new Date(apt.appointmentDate || apt.date)
         return appointmentDate > today && apt.status !== 'cancelled'
       }).length
+      
+      console.log('📊 Dashboard data calculation:')
+      console.log('Total appointments:', localAppointments.length)
+      console.log('Upcoming appointments:', upcomingAppointments)
+      console.log('Today:', today.toISOString().split('T')[0])
 
       // Count medical reports from localStorage
       const medicalReports = localReports.length

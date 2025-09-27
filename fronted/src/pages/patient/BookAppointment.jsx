@@ -41,9 +41,9 @@ export default function BookAppointment() {
   })
   const { user } = useAuth()
 
-  // Load appointments from localStorage only
+  // Load appointments from localStorage - user specific
   const [appointments, setAppointments] = useState(() => {
-    const savedAppointments = localStorage.getItem('patientAppointments')
+    const savedAppointments = localStorage.getItem(`patientAppointments_${user.id}`)
     return savedAppointments ? JSON.parse(savedAppointments) : []
   })
 
@@ -55,12 +55,26 @@ export default function BookAppointment() {
     loadDoctors()
   }, [])
 
+  // Refresh appointments from localStorage - user specific
+  const refreshAppointments = () => {
+    const savedAppointments = localStorage.getItem(`patientAppointments_${user.id}`)
+    if (savedAppointments) {
+      const parsedAppointments = JSON.parse(savedAppointments)
+      setAppointments(parsedAppointments)
+      console.log('✅ Appointments refreshed from localStorage:', parsedAppointments)
+    }
+  }
+
   const loadDoctors = () => {
     try {
+      console.log('Loading doctors for appointment booking...')
       const savedDoctors = localStorage.getItem('registeredDoctors')
       if (savedDoctors) {
-        setDoctors(JSON.parse(savedDoctors))
+        const doctorsData = JSON.parse(savedDoctors)
+        console.log('Found registered doctors for booking:', doctorsData)
+        setDoctors(doctorsData)
       } else {
+        console.log('No registered doctors found for booking')
         setDoctors([])
       }
     } catch (error) {
@@ -81,23 +95,61 @@ export default function BookAppointment() {
       // Find selected doctor
       const selectedDoctor = doctors.find(doctor => doctor.id === appointmentData.doctorId)
       
-      // Add new appointment to list
+      // Create appointment with full details for both patient and doctor
       const newAppointment = {
-        id: Date.now().toString(),
+        id: `APT${Date.now()}`,
+        appointmentId: `APT${Date.now()}`,
+        patientId: user.id,
+        patientName: `${user.profile?.firstName || 'Patient'} ${user.profile?.lastName || 'Name'}`,
+        patientEmail: user.email,
+        patientPhone: user.profile?.phone || 'Not provided',
+        patientAge: user.profile?.age || 0,
+        patientGender: user.profile?.gender || 'Not specified',
         doctorId: appointmentData.doctorId,
-        doctor: selectedDoctor ? `${selectedDoctor.profile?.firstName} ${selectedDoctor.profile?.lastName}` : 'Selected Doctor',
+        doctorName: selectedDoctor ? `Dr. ${selectedDoctor.profile?.firstName} ${selectedDoctor.profile?.lastName}` : 'Selected Doctor',
+        doctorEmail: selectedDoctor?.profile?.email || 'doctor@example.com',
         specialization: selectedDoctor?.specialization || 'General',
-        date: appointmentData.date,
-        time: appointmentData.time,
+        appointmentDate: appointmentData.date,
+        appointmentTime: appointmentData.time,
         type: appointmentData.type,
+        reason: appointmentData.reason,
+        symptoms: [],
+        duration: 30,
+        notes: '',
         status: 'pending',
-        reason: appointmentData.reason
+        payment: {
+          amount: selectedDoctor?.consultationFee || 0,
+          status: 'pending'
+        },
+        createdAt: new Date().toISOString(),
+        doctorNotes: '',
+        followUpRequired: false,
+        followUpDate: null,
+        patientDetails: {
+          medicalHistory: user.profile?.medicalHistory || [],
+          allergies: user.profile?.allergies || [],
+          medications: user.profile?.medications || [],
+          emergencyContact: user.profile?.emergencyContact || {
+            name: 'Not provided',
+            relationship: 'Not provided',
+            phone: 'Not provided'
+          }
+        },
+        reports: []
       }
+      
+      // Save to patient appointments - user specific
       const updatedAppointments = [newAppointment, ...appointments]
       setAppointments(updatedAppointments)
+      localStorage.setItem(`patientAppointments_${user.id}`, JSON.stringify(updatedAppointments))
       
-      // Save to localStorage
-      localStorage.setItem('patientAppointments', JSON.stringify(updatedAppointments))
+      // Save to global appointments (for doctor panel)
+      const globalAppointments = JSON.parse(localStorage.getItem('globalAppointments') || '[]')
+      globalAppointments.push(newAppointment)
+      localStorage.setItem('globalAppointments', JSON.stringify(globalAppointments))
+      
+      console.log('✅ Appointment saved to global appointments:', newAppointment)
+      console.log('📋 Total global appointments:', globalAppointments.length)
       
       // Reset form
       setAppointmentData({
@@ -116,17 +168,26 @@ export default function BookAppointment() {
 
   const getTodayAppointments = () => {
     const today = new Date().toISOString().split('T')[0]
-    return appointments.filter(apt => apt.date === today)
+    return appointments.filter(apt => {
+      const appointmentDate = apt.appointmentDate || apt.date
+      return appointmentDate === today
+    })
   }
 
   const getUpcomingAppointments = () => {
     const today = new Date().toISOString().split('T')[0]
-    return appointments.filter(apt => apt.date > today)
+    return appointments.filter(apt => {
+      const appointmentDate = apt.appointmentDate || apt.date
+      return appointmentDate > today
+    })
   }
 
   const getLastAppointments = () => {
     const today = new Date().toISOString().split('T')[0]
-    return appointments.filter(apt => apt.date < today)
+    return appointments.filter(apt => {
+      const appointmentDate = apt.appointmentDate || apt.date
+      return appointmentDate < today
+    })
   }
 
   const getFilteredAppointments = () => {
@@ -190,7 +251,7 @@ export default function BookAppointment() {
       try {
         const updatedAppointments = appointments.filter(apt => apt.id !== appointmentId)
         setAppointments(updatedAppointments)
-        localStorage.setItem('patientAppointments', JSON.stringify(updatedAppointments))
+        localStorage.setItem(`patientAppointments_${user.id}`, JSON.stringify(updatedAppointments))
         alert('Appointment deleted successfully!')
       } catch (error) {
         console.error('Error deleting appointment:', error)
@@ -213,7 +274,7 @@ export default function BookAppointment() {
           : apt
       )
       setAppointments(updatedAppointments)
-      localStorage.setItem('patientAppointments', JSON.stringify(updatedAppointments))
+      localStorage.setItem(`patientAppointments_${user.id}`, JSON.stringify(updatedAppointments))
       
       setShowEditModal(false)
       setSelectedAppointment(null)
@@ -251,6 +312,7 @@ export default function BookAppointment() {
           </div>
         </div>
       </div>
+
 
       {/* Tabs */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border mb-6">
@@ -495,11 +557,11 @@ export default function BookAppointment() {
                             <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-2">
                               <span className="flex items-center">
                                 <Calendar className="w-4 h-4 mr-1" />
-                                {new Date(appointment.date).toLocaleDateString()}
+                                {new Date(appointment.appointmentDate || appointment.date).toLocaleDateString()}
                               </span>
                               <span className="flex items-center">
                                 <Clock className="w-4 h-4 mr-1" />
-                                {appointment.time}
+                                {appointment.appointmentTime || appointment.time}
                               </span>
                               <span className="flex items-center">
                                 <User className="w-4 h-4 mr-1" />

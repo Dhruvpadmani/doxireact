@@ -128,7 +128,14 @@ router.get('/', async (req, res) => {
     if (status) query.status = status;
 
     const reviews = await Review.find(query)
-      .populate('patientId', 'patientId')
+      .populate({
+        path: 'patientId',
+        select: 'patientId',
+        populate: {
+          path: 'userId',
+          select: 'profile.firstName profile.lastName'
+        }
+      })
       .populate('doctorId', 'doctorId specialization')
       .populate('appointmentId', 'appointmentId appointmentDate')
       .sort({ createdAt: -1 })
@@ -158,7 +165,14 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const review = await Review.findById(req.params.id)
-      .populate('patientId', 'patientId')
+      .populate({
+        path: 'patientId',
+        select: 'patientId',
+        populate: {
+          path: 'userId',
+          select: 'profile.firstName profile.lastName'
+        }
+      })
       .populate('doctorId', 'doctorId specialization')
       .populate('appointmentId', 'appointmentId appointmentDate');
 

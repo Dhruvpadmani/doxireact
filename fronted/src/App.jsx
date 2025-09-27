@@ -9,14 +9,19 @@ import FindDoctor from './pages/FindDoctor'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import DoctorDashboard from './pages/doctor/DoctorDashboard'
 import DoctorAppointments from './pages/doctor/DoctorAppointments'
+import DoctorPatients from './pages/doctor/DoctorPatients'
+import DoctorReports from './pages/doctor/DoctorReports'
+import DoctorReviews from './pages/doctor/DoctorReviews'
+import DoctorAnalytics from './pages/doctor/DoctorAnalytics'
+import DoctorSettings from './pages/doctor/DoctorSettings'
 import StandaloneDoctorAppointments from './pages/DoctorAppointments'
+import DoctorLayout from './layouts/DoctorLayout'
 import PatientDashboard from './pages/patient/PatientDashboard'
 import PatientFindDoctor from './pages/patient/FindDoctorNew'
 import MedicalReports from './pages/patient/MedicalReports'
 import TestAuth from './pages/patient/TestAuth'
 import Reviews from './pages/patient/Reviews'
 import MedicalHistory from './pages/patient/MedicalHistory'
-import Prescriptions from './pages/patient/Prescriptions'
 import StandalonePatientDashboard from './pages/PatientDashboard'
 import BookAppointment from './pages/patient/BookAppointment'
 import StandaloneBookAppointment from './pages/BookAppointment'
@@ -59,23 +64,23 @@ function AppRoutes() {
         }
       />
       
-      {/* Doctor Routes */}
+      {/* Doctor Routes with Layout */}
       <Route
-        path="/doctor/appointments"
+        path="/doctor"
         element={
           <ProtectedRoute allowedRoles={['doctor']}>
-            <DoctorAppointments />
+            <DoctorLayout />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/doctor/*"
-        element={
-          <ProtectedRoute allowedRoles={['doctor']}>
-            <DoctorDashboard />
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route index element={<DoctorDashboard />} />
+        <Route path="appointments" element={<DoctorAppointments />} />
+        <Route path="patients" element={<DoctorPatients />} />
+        <Route path="reports" element={<DoctorReports />} />
+        <Route path="reviews" element={<DoctorReviews />} />
+        <Route path="analytics" element={<DoctorAnalytics />} />
+        <Route path="settings" element={<DoctorSettings />} />
+      </Route>
       
       {/* Patient Routes with Layout */}
       <Route
@@ -92,7 +97,6 @@ function AppRoutes() {
         <Route path="medical-reports" element={<MedicalReports />} />
                 <Route path="reviews" element={<Reviews />} />
                 <Route path="medical-history" element={<MedicalHistory />} />
-                <Route path="prescriptions" element={<Prescriptions />} />
         <Route path="test-auth" element={<TestAuth />} />
       </Route>
       

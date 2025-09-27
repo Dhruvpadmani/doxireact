@@ -40,7 +40,7 @@ const Prescriptions = () => {
         const demoPrescriptions = [
           {
             id: '1',
-            doctorName: 'Dr. Sarah Johnson',
+            doctorName: 'Dr. Ridham Vaghasiya',
             doctorSpecialization: 'Dermatology',
             date: '2024-01-15',
             status: 'active',
@@ -80,24 +80,6 @@ const Prescriptions = () => {
             ],
             notes: 'Monitor blood pressure regularly. Return if side effects occur.',
             followUpDate: '2024-02-10'
-          },
-          {
-            id: '3',
-            doctorName: 'Dr. Priya Sharma',
-            doctorSpecialization: 'Pediatrics',
-            date: '2024-01-05',
-            status: 'expired',
-            medications: [
-              {
-                name: 'Amoxicillin',
-                dosage: '250mg',
-                frequency: 'Three times daily',
-                duration: '10 days',
-                instructions: 'Take with plenty of water'
-              }
-            ],
-            notes: 'Complete full course even if symptoms improve.',
-            followUpDate: '2024-01-15'
           }
         ]
         setPrescriptions(demoPrescriptions)

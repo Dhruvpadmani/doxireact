@@ -41,107 +41,39 @@ const Reviews = () => {
     try {
       console.log('Loading doctors...')
       
-      // Demo doctors with same format as FindDoctor
-      const demoDoctors = [
-        {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Smith',
-          specialization: 'Cardiology',
-          name: 'Dr. John Smith'
-        },
-        {
-          id: '2',
-          firstName: 'Sarah',
-          lastName: 'Johnson', 
-          specialization: 'Dermatology',
-          name: 'Dr. Sarah Johnson'
-        },
-        {
-          id: '3',
-          firstName: 'Priya',
-          lastName: 'Sharma',
-          specialization: 'Pediatrics',
-          name: 'Dr. Priya Sharma'
-        },
-        {
-          id: '4',
-          firstName: 'Laljee',
-          lastName: 'Miyani',
-          specialization: 'Neurologist',
-          name: 'Dr. Laljee Miyani'
-        },
-        {
-          id: '5',
-          firstName: 'Michael',
-          lastName: 'Brown',
-          specialization: 'Orthopedics',
-          name: 'Dr. Michael Brown'
-        }
-      ]
-      
-      // Load registered doctors saved during signup/login
+      // Load registered doctors from localStorage
       const savedDoctors = localStorage.getItem('registeredDoctors')
-      let doctorsData = [...demoDoctors] // Start with demo doctors
+      let doctorsData = []
       
       if (savedDoctors) {
         try {
           const raw = JSON.parse(savedDoctors) || []
           console.log('Found registered doctors:', raw)
           
-          // Add registered doctors to the list
+          // Properly format registered doctors to match expected structure
           const registeredDoctors = raw.map((d) => ({
-            id: d.id || d._id || d.userId || `${d.firstName || ''}-${d.lastName || ''}`,
-            firstName: d.firstName || d.name?.first || '',
-            lastName: d.lastName || d.name?.last || '',
+            id: d.id,
+            firstName: d.profile?.firstName || 'Unknown',
+            lastName: d.profile?.lastName || 'Doctor',
             specialization: d.specialization || d.profile?.specialization || 'General',
-            name: `Dr. ${d.firstName || d.name?.first || ''} ${d.lastName || d.name?.last || ''}`.trim()
+            name: `Dr. ${d.profile?.firstName || 'Unknown'} ${d.profile?.lastName || 'Doctor'}`.trim()
           }))
           
-          // Combine registered and demo doctors
-          doctorsData = [...registeredDoctors, ...demoDoctors]
+          doctorsData = registeredDoctors
+          console.log('Formatted doctors for reviews:', doctorsData)
         } catch (parseError) {
           console.error('Error parsing registered doctors:', parseError)
         }
+      } else {
+        console.log('No registered doctors found in localStorage')
       }
       
       console.log('Setting doctors:', doctorsData)
       setDoctors(doctorsData)
     } catch (error) {
       console.error('Error loading doctors:', error)
-      // Fallback demo doctors
-      const fallbackDoctors = [
-        {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Smith',
-          specialization: 'Cardiology',
-          name: 'Dr. John Smith'
-        },
-        {
-          id: '2',
-          firstName: 'Sarah',
-          lastName: 'Johnson',
-          specialization: 'Dermatology', 
-          name: 'Dr. Sarah Johnson'
-        },
-        {
-          id: '3',
-          firstName: 'Priya',
-          lastName: 'Sharma',
-          specialization: 'Pediatrics',
-          name: 'Dr. Priya Sharma'
-        },
-        {
-          id: '4',
-          firstName: 'Laljee',
-          lastName: 'Miyani',
-          specialization: 'Neurologist',
-          name: 'Dr. Laljee Miyani'
-        }
-      ]
-      console.log('Using fallback doctors:', fallbackDoctors)
-      setDoctors(fallbackDoctors)
+      // If there's an error, set empty array
+      setDoctors([])
     }
   }
 
@@ -167,7 +99,12 @@ const Reviews = () => {
       const savedRecentReviews = localStorage.getItem('patientRecentReviews')
       if (savedRecentReviews) {
         const recentReviewsData = JSON.parse(savedRecentReviews)
-        setRecentReviews(recentReviewsData)
+        // Ensure patient names are included
+        const reviewsWithPatientNames = recentReviewsData.map(review => ({
+          ...review,
+          patientName: review.patientName || `${review.patientId?.userId?.profile?.firstName || 'Anonymous'} ${review.patientId?.userId?.profile?.lastName || 'Patient'}`
+        }))
+        setRecentReviews(reviewsWithPatientNames)
       } else {
         setRecentReviews([])
       }
@@ -199,8 +136,9 @@ const Reviews = () => {
                 doctorSpecialization: doctors.find(d => d.id === reviewForm.doctorId)?.specialization || 'Unknown',
                 rating: reviewForm.rating,
                 review: reviewForm.review,
-                submittedAt: new Date(), // Update submission time
-                canEdit: true
+                submittedAt: new Date().toISOString(), // Update submission time
+                canEdit: true,
+                patientName: `${user?.profile?.firstName || 'Anonymous'} ${user?.profile?.lastName || 'Patient'}`
               }
             : review
         )
@@ -215,8 +153,9 @@ const Reviews = () => {
           doctorSpecialization: doctors.find(d => d.id === reviewForm.doctorId)?.specialization || 'Unknown',
           rating: reviewForm.rating,
           review: reviewForm.review,
-          submittedAt: new Date(),
-          canEdit: true
+          submittedAt: new Date().toISOString(),
+          canEdit: true,
+          patientName: `${user?.profile?.firstName || 'Anonymous'} ${user?.profile?.lastName || 'Patient'}`
         }
         
         const updatedReviews = [newReview, ...myReviews]
@@ -264,15 +203,32 @@ const Reviews = () => {
   }
 
   const canEditReview = (submittedAt) => {
+    if (!submittedAt) return false
+    
     const now = new Date()
     const reviewTime = new Date(submittedAt)
+    
+    // Check if the date is valid
+    if (isNaN(reviewTime.getTime())) {
+      return false
+    }
+    
     const diffInMinutes = (now - reviewTime) / (1000 * 60)
     return diffInMinutes <= 30
   }
 
   const formatTimeAgo = (date) => {
+    if (!date) return 'Just now'
+    
     const now = new Date()
-    const diffInMinutes = Math.floor((now - date) / (1000 * 60))
+    const reviewDate = new Date(date)
+    
+    // Check if the date is valid
+    if (isNaN(reviewDate.getTime())) {
+      return 'Just now'
+    }
+    
+    const diffInMinutes = Math.floor((now - reviewDate) / (1000 * 60))
     
     if (diffInMinutes < 1) return 'Just now'
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`
@@ -454,6 +410,10 @@ const Reviews = () => {
                       <span className="text-gray-500 dark:text-gray-400 text-sm">{formatTimeAgo(review.submittedAt)}</span>
                     </div>
                     <p className="text-gray-700 dark:text-gray-300 text-sm">{review.review}</p>
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs mt-2">
+                      <User className="h-3 w-3" />
+                      <span>By: {user?.profile?.firstName} {user?.profile?.lastName}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -486,7 +446,7 @@ const Reviews = () => {
                 <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">{review.review}</p>
                 <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs">
                   <User className="h-3 w-3" />
-                  <span>{review.patientName}</span>
+                  <span>{review.patientName || 'Anonymous Patient'}</span>
                 </div>
               </div>
             ))}
