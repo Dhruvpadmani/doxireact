@@ -15,8 +15,10 @@ import ReportManagement from './pages/admin/ReportManagement'
 import ReviewManagement from './pages/admin/ReviewManagement'
 import CalendarManagement from './pages/admin/CalendarManagement'
 import NotificationsSettings from './pages/admin/NotificationsSettings'
+import NotificationsSettingsFixed from './pages/admin/NotificationsSettingsFixed'
 import ReportsAnalytics from './pages/admin/ReportsAnalytics'
 import AdminLogs from './pages/admin/AdminLogs'
+import Settings from './pages/admin/Settings'
 import DoctorDashboard from './pages/doctor/DoctorDashboard'
 import DoctorAppointments from './pages/doctor/DoctorAppointments'
 import DoctorPatients from './pages/doctor/DoctorPatients'
@@ -78,10 +80,10 @@ function AppRoutes() {
         <Route path="reports" element={<ReportManagement />} />
         <Route path="reviews" element={<ReviewManagement />} />
         <Route path="calendar" element={<CalendarManagement />} />
-        <Route path="notifications" element={<NotificationsSettings />} />
+        <Route path="notifications" element={<NotificationsSettingsFixed />} />
         <Route path="analytics" element={<ReportsAnalytics />} />
         <Route path="logs" element={<AdminLogs />} />
-        <Route path="settings" element={<AdminDashboard />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       
       {/* Doctor Routes with Layout */}
