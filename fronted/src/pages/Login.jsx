@@ -25,6 +25,7 @@ export default function Login() {
     setIsLoading(false)
     
     // Navigation is handled inside the login function in AuthContext
+    // Navigation is handled within the login function itself
   }
 
   return (

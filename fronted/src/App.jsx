@@ -2,11 +2,21 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import DashboardRedirect from './DashboardRedirect'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import LandingPage from './pages/LandingPage'
 import FindDoctor from './pages/FindDoctor'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import PatientManagement from './pages/admin/PatientManagement'
+import DoctorManagement from './pages/admin/DoctorManagement'
+import AppointmentManagement from './pages/admin/AppointmentManagement'
+import ReportManagement from './pages/admin/ReportManagement'
+import ReviewManagement from './pages/admin/ReviewManagement'
+import CalendarManagement from './pages/admin/CalendarManagement'
+import NotificationsSettings from './pages/admin/NotificationsSettings'
+import ReportsAnalytics from './pages/admin/ReportsAnalytics'
+import AdminLogs from './pages/admin/AdminLogs'
 import DoctorDashboard from './pages/doctor/DoctorDashboard'
 import DoctorAppointments from './pages/doctor/DoctorAppointments'
 import DoctorPatients from './pages/doctor/DoctorPatients'
@@ -26,6 +36,7 @@ import StandalonePatientDashboard from './pages/PatientDashboard'
 import BookAppointment from './pages/patient/BookAppointment'
 import StandaloneBookAppointment from './pages/BookAppointment'
 import PatientLayout from './layouts/PatientLayout'
+import AdminLayout from './layouts/AdminLayout'
 import LoadingSpinner from './components/LoadingSpinner'
 import ProtectedRoute from './components/ProtectedRoute'
 import Unauthorized from './pages/Unauthorized'
@@ -46,23 +57,32 @@ function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).role === 'admin' && <Navigate to="/admin" replace />}
-            {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).role === 'doctor' && <Navigate to="/doctor" replace />}
-            {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).role === 'patient' && <Navigate to="/patient" replace />}
-            <Navigate to="/login" replace />
+            <DashboardRedirect />
           </ProtectedRoute>
         }
       />
       
-      {/* Admin Routes */}
+      {/* Admin Routes with Layout */}
       <Route
-        path="/admin/*"
+        path="/admin"
         element={
           <ProtectedRoute allowedRoles={['admin']}>
-            <AdminDashboard />
+            <AdminLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="patients" element={<PatientManagement />} />
+        <Route path="doctors" element={<DoctorManagement />} />
+        <Route path="appointments" element={<AppointmentManagement />} />
+        <Route path="reports" element={<ReportManagement />} />
+        <Route path="reviews" element={<ReviewManagement />} />
+        <Route path="calendar" element={<CalendarManagement />} />
+        <Route path="notifications" element={<NotificationsSettings />} />
+        <Route path="analytics" element={<ReportsAnalytics />} />
+        <Route path="logs" element={<AdminLogs />} />
+        <Route path="settings" element={<AdminDashboard />} />
+      </Route>
       
       {/* Doctor Routes with Layout */}
       <Route

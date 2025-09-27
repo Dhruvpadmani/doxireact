@@ -26,7 +26,7 @@ const patientSchema = new mongoose.Schema({
       required: true,
       validate: {
         validator: function(v) {
-          return /^\\d{10}$/.test(v);
+          return /^\d{10}$/.test(v?.toString().trim());
         },
         message: 'Phone number must be exactly 10 digits'
       }
@@ -108,10 +108,19 @@ const patientSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate patient ID before saving
+// Generate patient ID before validation
+patientSchema.pre('validate', async function(next) {
+  if (!this.patientId) {  // Only generate if not already set
+    let count = await mongoose.model('Patient').countDocuments();
+    this.patientId = `PAT${String(count + 1).padStart(6, '0')}`;
+  }
+  next();
+});
+
+// Generate patient ID before saving as backup
 patientSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await mongoose.model('Patient').countDocuments();
+  if (!this.patientId) {  // Only generate if not already set
+    let count = await mongoose.model('Patient').countDocuments();
     this.patientId = `PAT${String(count + 1).padStart(6, '0')}`;
   }
   next();
