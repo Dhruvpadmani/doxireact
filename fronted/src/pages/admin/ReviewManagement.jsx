@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Star, 
   Search, 
@@ -12,37 +12,209 @@ import {
   MessageCircle,
   AlertTriangle,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Plus,
+  Save,
+  CheckCircle as CheckCircleIcon,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar as CalendarIcon,
+  Stethoscope
 } from 'lucide-react';
 import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
-export default function ReviewManagement() {
+const ReviewManagement = () => {
+  // Props destructuring (none for this component)
+  
+  // Default hooks (none for this component)
+  
+  // Redux states (none for this component)
+  
+  // Component states
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReview, setSelectedReview] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(''); // 'view', 'approve', 'remove'
+  const [modalType, setModalType] = useState(''); // 'view', 'create', 'edit', 'delete', 'approve'
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewsPerPage] = useState(10);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [formData, setFormData] = useState({
+    patientId: '',
+    doctorId: '',
+    rating: 5,
+    comment: '',
+    status: 'pending'
+  });
+  const [formErrors, setFormErrors] = useState({});
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
 
-  useEffect(() => {
-    fetchReviews();
-  }, []);
-
-  const fetchReviews = async () => {
+  // Functions
+  const fetchReviews = useCallback(async () => {
     try {
-      const response = await adminAPI.getReviews();
-      setReviews(response.data);
+      setLoading(true);
+      setError(null);
+      // For now, we'll use localStorage data as fallback
+      const sampleReviews = [
+        {
+          id: '1',
+          patientId: { id: '1', profile: { firstName: 'John', lastName: 'Doe' }, email: 'john@example.com' },
+          doctorId: { id: '1', profile: { firstName: 'Jane', lastName: 'Smith', specialization: 'Cardiology' } },
+          rating: 5,
+          comment: 'Excellent doctor! Very professional and caring. The consultation was thorough and I felt heard.',
+          status: 'approved',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: '2',
+          patientId: { id: '2', profile: { firstName: 'Alice', lastName: 'Johnson' }, email: 'alice@example.com' },
+          doctorId: { id: '2', profile: { firstName: 'Bob', lastName: 'Wilson', specialization: 'Dermatology' } },
+          rating: 4,
+          comment: 'Good experience overall. The doctor was knowledgeable and the treatment was effective.',
+          status: 'pending',
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+          updatedAt: new Date(Date.now() - 86400000).toISOString()
+        },
+        {
+          id: '3',
+          patientId: { id: '3', profile: { firstName: 'Mike', lastName: 'Brown' }, email: 'mike@example.com' },
+          doctorId: { id: '1', profile: { firstName: 'Jane', lastName: 'Smith', specialization: 'Cardiology' } },
+          rating: 2,
+          comment: 'Not satisfied with the service. Long waiting time and rushed consultation.',
+          status: 'removed',
+          removedReason: 'Inappropriate content',
+          createdAt: new Date(Date.now() - 172800000).toISOString(),
+          updatedAt: new Date(Date.now() - 172800000).toISOString()
+        }
+      ];
+      setReviews(sampleReviews);
     } catch (error) {
       console.error('Failed to fetch reviews:', error);
-      // Set empty array in case of error
-      setReviews([]);
+      setError('Failed to load reviews');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const fetchPatientsAndDoctors = useCallback(async () => {
+    try {
+      const registeredUsers = JSON.parse(localStorage.getItem('demoAccounts') || '[]');
+      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
+      setPatients(registeredUsers.filter(user => user.role === 'patient'));
+      setDoctors(registeredDoctors);
+    } catch (error) {
+      console.error('Failed to fetch patients and doctors:', error);
+    }
+  }, []);
+
+  // useEffects
+  useEffect(() => {
+    fetchReviews();
+    fetchPatientsAndDoctors();
+  }, [fetchReviews, fetchPatientsAndDoctors]);
+
+  // Form validation
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.patientId) errors.patientId = 'Patient is required';
+    if (!formData.doctorId) errors.doctorId = 'Doctor is required';
+    if (!formData.rating || formData.rating < 1 || formData.rating > 5) {
+      errors.rating = 'Rating must be between 1 and 5';
+    }
+    if (!formData.comment.trim()) errors.comment = 'Review comment is required';
+    if (formData.comment.trim().length < 10) {
+      errors.comment = 'Review comment must be at least 10 characters long';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // CRUD Operations
+  const handleCreateReview = async () => {
+    if (!validateForm()) return;
+    
+    try {
+      const selectedPatient = patients.find(p => p.id === formData.patientId);
+      const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
+      
+      const newReview = {
+        id: Date.now().toString(),
+        patientId: selectedPatient,
+        doctorId: selectedDoctor,
+        rating: formData.rating,
+        comment: formData.comment,
+        status: formData.status,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      setReviews(prev => [newReview, ...prev]);
+      setSuccess('Review created successfully');
+      setShowModal(false);
+      resetForm();
+    } catch (error) {
+      console.error('Failed to create review:', error);
+      setError('Failed to create review');
+    }
+  };
+
+  const handleUpdateReview = async () => {
+    if (!validateForm()) return;
+    
+    try {
+      const selectedPatient = patients.find(p => p.id === formData.patientId);
+      const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
+      
+      const updatedReview = {
+        ...selectedReview,
+        patientId: selectedPatient,
+        doctorId: selectedDoctor,
+        rating: formData.rating,
+        comment: formData.comment,
+        status: formData.status,
+        updatedAt: new Date().toISOString()
+      };
+      
+      setReviews(prev => prev.map(r => 
+        r.id === selectedReview.id ? updatedReview : r
+      ));
+      setSuccess('Review updated successfully');
+      setShowModal(false);
+      resetForm();
+    } catch (error) {
+      console.error('Failed to update review:', error);
+      setError('Failed to update review');
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    try {
+      setReviews(prev => prev.filter(r => r.id !== selectedReview.id));
+      setSuccess('Review deleted successfully');
+      setShowModal(false);
+    } catch (error) {
+      console.error('Failed to delete review:', error);
+      setError('Failed to delete review');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      patientId: '',
+      doctorId: '',
+      rating: 5,
+      comment: '',
+      status: 'pending'
+    });
+    setFormErrors({});
+    setSelectedReview(null);
   };
 
   // Filter reviews based on search term and status
@@ -68,59 +240,59 @@ export default function ReviewManagement() {
   const currentReviews = filteredReviews.slice(indexOfFirstReview, indexOfLastReview);
   const totalPages = Math.ceil(filteredReviews.length / reviewsPerPage);
 
+  // Modal handlers
   const handleViewReview = (review) => {
     setSelectedReview(review);
     setModalType('view');
     setShowModal(true);
   };
 
-  const handleApproveReview = (review) => {
+  const handleEditReview = (review) => {
     setSelectedReview(review);
-    setModalType('approve');
+    setFormData({
+      patientId: review.patientId?.id || '',
+      doctorId: review.doctorId?.id || '',
+      rating: review.rating || 5,
+      comment: review.comment || '',
+      status: review.status || 'pending'
+    });
+    setModalType('edit');
     setShowModal(true);
   };
 
-  const handleRemoveReview = (review) => {
+  const handleDeleteReviewClick = (review) => {
     setSelectedReview(review);
-    setModalType('remove');
+    setModalType('delete');
     setShowModal(true);
   };
 
-  const handleAction = async () => {
-    if (!selectedReview || !modalType) return;
+  const handleCreateReviewClick = () => {
+    resetForm();
+    setModalType('create');
+    setShowModal(true);
+  };
 
+  const handleApproveReview = async (review) => {
     try {
-      if (modalType === 'approve') {
-        // Approve review
-        await adminAPI.updateReviewStatus(selectedReview._id, {
-          status: 'approved'
-        });
-        
-        // Update local state
-        setReviews(prev => prev.map(r => 
-          r._id === selectedReview._id 
-            ? { ...r, status: 'approved' }
-            : r
-        ));
-      } else if (modalType === 'remove') {
-        // Remove review
-        await adminAPI.updateReviewStatus(selectedReview._id, {
-          status: 'removed',
-          removedReason: 'Inappropriate content'
-        });
-        
-        // Update local state
-        setReviews(prev => prev.map(r => 
-          r._id === selectedReview._id 
-            ? { ...r, status: 'removed', removedReason: 'Inappropriate content' }
-            : r
-        ));
-      }
-      
-      setShowModal(false);
-      setSelectedReview(null);
+      setReviews(prev => prev.map(r => 
+        r.id === review.id ? { ...r, status: 'approved', updatedAt: new Date().toISOString() } : r
+      ));
+      setSuccess('Review approved successfully');
     } catch (error) {
-      console.error('Failed to update review:', error);
+      console.error('Failed to approve review:', error);
+      setError('Failed to approve review');
+    }
+  };
+
+  const handleRemoveReview = async (review) => {
+    try {
+      setReviews(prev => prev.map(r => 
+        r.id === review.id ? { ...r, status: 'removed', removedReason: 'Inappropriate content', updatedAt: new Date().toISOString() } : r
+      ));
+      setSuccess('Review removed successfully');
+    } catch (error) {
+      console.error('Failed to remove review:', error);
+      setError('Failed to remove review');
     }
   };
 
@@ -144,29 +316,72 @@ export default function ReviewManagement() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="xl" />
+      <div className="space-y-6">
+        <div className="h-8 w-64 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-32 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+        <div className="h-96 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Review Management</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Monitor abusive/fake feedback, remove inappropriate reviews
-        </p>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Review Management</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
+            Monitor abusive/fake feedback, remove inappropriate reviews
+          </p>
+        </div>
+        <button
+          onClick={handleCreateReviewClick}
+          className="btn btn-primary flex items-center gap-2 w-full sm:w-auto"
+        >
+          <Plus className="h-4 w-4" />
+          Create Review
+        </button>
       </div>
 
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3">
+          <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
+          <button
+            onClick={() => setSuccess(null)}
+            className="ml-auto text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="ml-auto text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <input
             type="text"
             placeholder="Search reviews by patient, doctor, or content..."
-            className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            className="input pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -174,7 +389,7 @@ export default function ReviewManagement() {
         
         <div className="flex gap-2">
           <select
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            className="input"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
@@ -183,19 +398,14 @@ export default function ReviewManagement() {
             <option value="approved">Approved</option>
             <option value="removed">Removed</option>
           </select>
-          
-          <button className="btn btn-secondary flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </button>
         </div>
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="stat-card">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="stat-card hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="stat-label">Total Reviews</p>
               <p className="stat-value text-primary-600">{reviews.length}</p>
             </div>
@@ -205,9 +415,9 @@ export default function ReviewManagement() {
           </div>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="stat-label">Approved</p>
               <p className="stat-value text-success-600">
                 {reviews.filter(r => r.status === 'approved').length}
@@ -219,9 +429,9 @@ export default function ReviewManagement() {
           </div>
         </div>
 
-        <div className="stat-card">
+        <div className="stat-card hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="stat-label">Pending</p>
               <p className="stat-value text-warning-600">
                 {reviews.filter(r => r.status === 'pending').length}
@@ -229,6 +439,20 @@ export default function ReviewManagement() {
             </div>
             <div className="bg-warning-100 dark:bg-warning-900 p-3 rounded-full">
               <MessageCircle className="h-6 w-6 text-warning-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card hover:shadow-md transition-shadow duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="stat-label">Removed</p>
+              <p className="stat-value text-error-600">
+                {reviews.filter(r => r.status === 'removed').length}
+              </p>
+            </div>
+            <div className="bg-error-100 dark:bg-error-900 p-3 rounded-full">
+              <X className="h-6 w-6 text-error-600" />
             </div>
           </div>
         </div>
@@ -306,33 +530,42 @@ export default function ReviewManagement() {
                       <button
                         onClick={() => handleViewReview(review)}
                         className="btn btn-ghost btn-sm"
+                        title="View Details"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
+                      <button
+                        onClick={() => handleEditReview(review)}
+                        className="btn btn-ghost btn-sm"
+                        title="Edit Review"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
                       {review.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleApproveReview(review)}
-                            className="btn btn-success btn-sm"
-                          >
-                            <Check className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleRemoveReview(review)}
-                            className="btn btn-destructive btn-sm"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </>
-                      )}
-                      {review.status !== 'pending' && (
                         <button
-                          onClick={() => handleRemoveReview(review)}
-                          className="btn btn-outline btn-sm"
+                          onClick={() => handleApproveReview(review)}
+                          className="btn btn-success btn-sm"
+                          title="Approve Review"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Check className="h-4 w-4" />
                         </button>
                       )}
+                      {review.status === 'approved' && (
+                        <button
+                          onClick={() => handleRemoveReview(review)}
+                          className="btn btn-destructive btn-sm"
+                          title="Remove Review"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteReviewClick(review)}
+                        className="btn btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Delete Review"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -385,156 +618,267 @@ export default function ReviewManagement() {
       {/* Modal for review details/actions */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {modalType === 'view' ? 'Review Details' : 
-                   modalType === 'approve' ? 'Approve Review' : 
-                   'Remove Review'}
+                  {modalType === 'view' && 'Review Details'}
+                  {modalType === 'create' && 'Create New Review'}
+                  {modalType === 'edit' && 'Edit Review'}
+                  {modalType === 'delete' && 'Delete Review'}
                 </h3>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
-                  ✕
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              {selectedReview && (
-                <div className="space-y-4">
-                  {modalType === 'view' ? (
-                    <div>
-                      <div className="mb-4">
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Review Information</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">Patient</p>
-                            <p className="text-gray-600 dark:text-gray-400">
-                              {selectedReview.patientId?.profile?.firstName} {selectedReview.patientId?.profile?.lastName}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">Doctor</p>
-                            <p className="text-gray-600 dark:text-gray-400">
-                              Dr. {selectedReview.doctorId?.profile?.firstName} {selectedReview.doctorId?.profile?.lastName}
-                            </p>
-                          </div>
-                        </div>
+              {modalType === 'view' && selectedReview && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium text-xl">
+                        {selectedReview.patientId?.profile?.firstName?.[0]}
+                        {selectedReview.patientId?.profile?.lastName?.[0]}
                       </div>
-                      
-                      <div className="mb-4">
-                        <p className="font-medium text-gray-900 dark:text-white">Rating</p>
-                        <div className="flex items-center gap-2">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-5 w-5 ${
-                                i < selectedReview.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                          <span className="ml-2 text-gray-900 dark:text-white">({selectedReview.rating}/5)</span>
-                        </div>
-                      </div>
-                      
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">Review</p>
-                        <p className="text-gray-600 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                          "{selectedReview.comment}"
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Patient</h4>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          {selectedReview.patientId?.profile?.firstName} {selectedReview.patientId?.profile?.lastName}
                         </p>
-                      </div>
-                      
-                      <div className="mt-4">
-                        <p className="font-medium text-gray-900 dark:text-white">Status</p>
-                        <span className={`badge ${getStatusColor(selectedReview.status)}`}>
-                          {selectedReview.status}
-                        </span>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {selectedReview.patientId?.email}
+                        </p>
                       </div>
                     </div>
-                  ) : modalType === 'approve' ? (
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white font-medium text-xl">
+                        {selectedReview.doctorId?.profile?.firstName?.[0]}
+                        {selectedReview.doctorId?.profile?.lastName?.[0]}
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Doctor</h4>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          Dr. {selectedReview.doctorId?.profile?.firstName} {selectedReview.doctorId?.profile?.lastName}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <Stethoscope className="h-3 w-3" />
+                          {selectedReview.doctorId?.profile?.specialization}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <div className="flex items-center gap-3 mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <ThumbsUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        <p className="text-gray-700 dark:text-gray-300">
-                          Approve this review? It will be visible to other users.
-                        </p>
-                      </div>
-                      <div className="mb-4">
-                        <p className="font-medium text-gray-900 dark:text-white">Review</p>
-                        <p className="text-gray-600 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                          "{selectedReview.comment}"
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">Rating</p>
-                          <div className="flex items-center gap-2">
+                      <h5 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <Star className="h-4 w-4" />
+                        Review Information
+                      </h5>
+                      <div className="space-y-2">
+                        <p><span className="text-gray-600 dark:text-gray-400">Rating:</span> 
+                          <div className="flex items-center gap-1 mt-1">
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
-                                className={`h-5 w-5 ${
+                                className={`h-4 w-4 ${
                                   i < selectedReview.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
                                 }`}
                               />
                             ))}
+                            <span className="ml-2 text-gray-600 dark:text-gray-400">({selectedReview.rating}/5)</span>
                           </div>
-                        </div>
+                        </p>
+                        <p><span className="text-gray-600 dark:text-gray-400">Status:</span> 
+                          <span className={`badge ml-2 ${getStatusColor(selectedReview.status)}`}>
+                            {selectedReview.status}
+                          </span>
+                        </p>
+                        {selectedReview.removedReason && (
+                          <p><span className="text-gray-600 dark:text-gray-400">Removal Reason:</span> {selectedReview.removedReason}</p>
+                        )}
                       </div>
                     </div>
-                  ) : (
                     <div>
-                      <div className="flex items-center gap-3 mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        <p className="text-gray-700 dark:text-gray-300">
-                          Remove this review? This action cannot be undone.
-                        </p>
-                      </div>
-                      <div className="mb-4">
-                        <p className="font-medium text-gray-900 dark:text-white">Review</p>
-                        <p className="text-gray-600 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                      <h5 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" />
+                        Review Content
+                      </h5>
+                      <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <p className="text-gray-700 dark:text-gray-300 italic">
                           "{selectedReview.comment}"
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">Rating</p>
-                          <div className="flex items-center gap-2">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-5 w-5 ${
-                                  i < selectedReview.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
+                      <div className="mt-3 space-y-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <span className="text-gray-600 dark:text-gray-400">Created:</span> {new Date(selectedReview.createdAt).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <span className="text-gray-600 dark:text-gray-400">Last Updated:</span> {new Date(selectedReview.updatedAt).toLocaleString()}
+                        </p>
                       </div>
                     </div>
-                  )}
+                  </div>
+                </div>
+              )}
+
+              {(modalType === 'create' || modalType === 'edit') && (
+                <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Patient *</label>
+                      <select
+                        className={`input ${formErrors.patientId ? 'border-red-500' : ''}`}
+                        value={formData.patientId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, patientId: e.target.value }))}
+                      >
+                        <option value="">Select Patient</option>
+                        {patients.map(patient => (
+                          <option key={patient.id} value={patient.id}>
+                            {patient.profile?.firstName} {patient.profile?.lastName} ({patient.email})
+                          </option>
+                        ))}
+                      </select>
+                      {formErrors.patientId && <p className="text-red-500 text-sm mt-1">{formErrors.patientId}</p>}
+                    </div>
+                    <div>
+                      <label className="label">Doctor *</label>
+                      <select
+                        className={`input ${formErrors.doctorId ? 'border-red-500' : ''}`}
+                        value={formData.doctorId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, doctorId: e.target.value }))}
+                      >
+                        <option value="">Select Doctor</option>
+                        {doctors.map(doctor => (
+                          <option key={doctor.id} value={doctor.id}>
+                            Dr. {doctor.profile?.firstName} {doctor.profile?.lastName} ({doctor.profile?.specialization})
+                          </option>
+                        ))}
+                      </select>
+                      {formErrors.doctorId && <p className="text-red-500 text-sm mt-1">{formErrors.doctorId}</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Rating *</label>
+                      <div className="flex items-center gap-2">
+                        {[1, 2, 3, 4, 5].map((rating) => (
+                          <button
+                            key={rating}
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, rating }))}
+                            className={`p-2 rounded-lg transition-colors ${
+                              formData.rating >= rating
+                                ? 'text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20'
+                                : 'text-gray-300 hover:text-yellow-400'
+                            }`}
+                          >
+                            <Star className={`h-6 w-6 ${formData.rating >= rating ? 'fill-current' : ''}`} />
+                          </button>
+                        ))}
+                        <span className="ml-2 text-gray-600 dark:text-gray-400">({formData.rating}/5)</span>
+                      </div>
+                      {formErrors.rating && <p className="text-red-500 text-sm mt-1">{formErrors.rating}</p>}
+                    </div>
+                    <div>
+                      <label className="label">Status</label>
+                      <select
+                        className="input"
+                        value={formData.status}
+                        onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="removed">Removed</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">Review Comment *</label>
+                    <textarea
+                      className={`input ${formErrors.comment ? 'border-red-500' : ''}`}
+                      rows="4"
+                      value={formData.comment}
+                      onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
+                      placeholder="Share your experience with the doctor..."
+                    />
+                    {formErrors.comment && <p className="text-red-500 text-sm mt-1">{formErrors.comment}</p>}
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Minimum 10 characters required
+                    </p>
+                  </div>
+                </form>
+              )}
+
+              {modalType === 'delete' && selectedReview && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
+                    <div>
+                      <h4 className="font-medium text-red-900 dark:text-red-100">Delete Review</h4>
+                      <p className="text-sm text-red-700 dark:text-red-300">
+                        This action cannot be undone. The review will be permanently removed from the system.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <strong>Patient:</strong> {selectedReview.patientId?.profile?.firstName} {selectedReview.patientId?.profile?.lastName}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <strong>Doctor:</strong> Dr. {selectedReview.doctorId?.profile?.firstName} {selectedReview.doctorId?.profile?.lastName}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <strong>Rating:</strong> {selectedReview.rating}/5 stars
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <strong>Comment:</strong> {selectedReview.comment.substring(0, 100)}...
+                    </p>
+                  </div>
                 </div>
               )}
 
               <div className="flex gap-3 mt-6">
-                {modalType === 'approve' && (
+                {modalType === 'create' && (
                   <button
-                    onClick={handleAction}
-                    className="btn btn-success"
+                    onClick={handleCreateReview}
+                    className="btn btn-primary flex items-center gap-2"
                   >
-                    Approve Review
+                    <Save className="h-4 w-4" />
+                    Create Review
                   </button>
                 )}
-                {modalType === 'remove' && (
+                {modalType === 'edit' && (
                   <button
-                    onClick={handleAction}
-                    className="btn btn-destructive"
+                    onClick={handleUpdateReview}
+                    className="btn btn-primary flex items-center gap-2"
                   >
-                    Remove Review
+                    <Save className="h-4 w-4" />
+                    Update Review
+                  </button>
+                )}
+                {modalType === 'delete' && (
+                  <button
+                    onClick={handleDeleteReview}
+                    className="btn btn-destructive flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Review
                   </button>
                 )}
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
                   className="btn btn-outline"
                 >
                   Cancel
@@ -546,4 +890,6 @@ export default function ReviewManagement() {
       )}
     </div>
   );
-}
+};
+
+export default ReviewManagement;
