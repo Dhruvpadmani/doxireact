@@ -107,10 +107,19 @@ const appointmentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate appointment ID before saving
+// Generate appointment ID before validation
+appointmentSchema.pre('validate', async function(next) {
+  if (!this.appointmentId) {  // Only generate if not already set
+    let count = await mongoose.model('Appointment').countDocuments();
+    this.appointmentId = `APT${String(count + 1).padStart(6, '0')}`;
+  }
+  next();
+});
+
+// Generate appointment ID before saving as backup
 appointmentSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await mongoose.model('Appointment').countDocuments();
+  if (!this.appointmentId) {  // Only generate if not already set
+    let count = await mongoose.model('Appointment').countDocuments();
     this.appointmentId = `APT${String(count + 1).padStart(6, '0')}`;
   }
   next();
