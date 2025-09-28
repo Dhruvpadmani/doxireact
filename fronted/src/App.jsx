@@ -13,8 +13,6 @@ import DoctorManagement from './pages/admin/DoctorManagement'
 import AppointmentManagement from './pages/admin/AppointmentManagement'
 import ReportManagement from './pages/admin/ReportManagement'
 import ReviewManagement from './pages/admin/ReviewManagement'
-import CalendarManagement from './pages/admin/CalendarManagement'
-import NotificationsSettingsFixed from './pages/admin/NotificationsSettingsFixed'
 import ReportsAnalytics from './pages/admin/ReportsAnalytics'
 import AdminLogs from './pages/admin/AdminLogs'
 import Settings from './pages/admin/Settings'
@@ -76,8 +74,6 @@ function AppRoutes() {
         <Route path="appointments" element={<AppointmentManagement />} />
         <Route path="reports" element={<ReportManagement />} />
         <Route path="reviews" element={<ReviewManagement />} />
-        <Route path="calendar" element={<CalendarManagement />} />
-        <Route path="notifications" element={<NotificationsSettingsFixed />} />
         <Route path="analytics" element={<ReportsAnalytics />} />
         <Route path="logs" element={<AdminLogs />} />
         <Route path="settings" element={<Settings />} />

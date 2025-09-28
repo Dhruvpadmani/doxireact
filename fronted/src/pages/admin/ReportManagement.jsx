@@ -1,31 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  FileText, 
-  Search, 
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
+import React, {useCallback, useEffect, useState} from 'react';
+import {
   Check,
-  X,
-  FileCheck,
-  FileX,
-  User,
-  Stethoscope,
   Clock,
-  AlertTriangle,
+  Download,
+  Edit,
+  Eye,
+  FileText,
+  Mail,
   Plus,
   Save,
-  CheckCircle as CheckCircleIcon,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar as CalendarIcon,
-  Upload,
-  Download
+  Search,
+  Stethoscope,
+  Trash2,
+  Upload
 } from 'lucide-react';
-import { adminAPI } from '../../services/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import {adminAPI, reportsAPI} from '../../services/api';
 
 const ReportManagement = () => {
   // Props destructuring (none for this component)
@@ -65,41 +54,20 @@ const ReportManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      // For now, we'll use localStorage data as fallback
-      const sampleReports = [
-        {
-          id: '1',
-          patientId: { id: '1', profile: { firstName: 'John', lastName: 'Doe' }, email: 'john@example.com' },
-          doctorId: { id: '1', profile: { firstName: 'Jane', lastName: 'Smith', specialization: 'Cardiology' } },
-          reportType: 'Blood Test',
-          title: 'Complete Blood Count',
-          description: 'Routine blood test results',
-          filePath: '/reports/blood-test-john-doe.pdf',
-          notes: 'All values within normal range',
-          verifiedStatus: 'verified',
-          uploadedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          patientId: { id: '2', profile: { firstName: 'Alice', lastName: 'Johnson' }, email: 'alice@example.com' },
-          doctorId: { id: '2', profile: { firstName: 'Bob', lastName: 'Wilson', specialization: 'Dermatology' } },
-          reportType: 'X-Ray',
-          title: 'Chest X-Ray',
-          description: 'Chest X-ray examination',
-          filePath: '/reports/chest-xray-alice-johnson.pdf',
-          notes: 'Clear lungs, no abnormalities detected',
-          verifiedStatus: 'pending',
-          uploadedAt: new Date(Date.now() - 86400000).toISOString(),
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          updatedAt: new Date(Date.now() - 86400000).toISOString()
+        // Use real API call to fetch reports
+        const response = await reportsAPI.getReports();
+        if (response.data && response.data.reports) {
+            setReports(response.data.reports);
+        } else {
+            setReports([]);
         }
-      ];
-      setReports(sampleReports);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
       setError('Failed to load reports');
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load reports. Please check your connection and try again.');
+        });
     } finally {
       setLoading(false);
     }
@@ -107,12 +75,23 @@ const ReportManagement = () => {
 
   const fetchPatientsAndDoctors = useCallback(async () => {
     try {
-      const registeredUsers = JSON.parse(localStorage.getItem('demoAccounts') || '[]');
-      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
-      setPatients(registeredUsers.filter(user => user.role === 'patient'));
-      setDoctors(registeredDoctors);
+        // Fetch patients
+        const patientsResponse = await adminAPI.getUsers({role: 'patient'});
+        if (patientsResponse.data && patientsResponse.data.users) {
+            setPatients(patientsResponse.data.users);
+        }
+
+        // Fetch doctors
+        const doctorsResponse = await adminAPI.getDoctors();
+        if (doctorsResponse.data && doctorsResponse.data.doctors) {
+            setDoctors(doctorsResponse.data.doctors);
+        }
     } catch (error) {
       console.error('Failed to fetch patients and doctors:', error);
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load patients and doctors. Please check your connection and try again.');
+        });
     }
   }, []);
 

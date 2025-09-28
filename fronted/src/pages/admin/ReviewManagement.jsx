@@ -1,29 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Star, 
-  Search, 
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  Check,
-  X,
-  User,
-  MessageCircle,
+import React, {useCallback, useEffect, useState} from 'react';
+import {
   AlertTriangle,
-  ThumbsUp,
-  ThumbsDown,
+  Check,
+  CheckCircle as CheckCircleIcon,
+  Edit,
+  Eye,
+  Mail,
+  MessageCircle,
   Plus,
   Save,
-  CheckCircle as CheckCircleIcon,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar as CalendarIcon,
-  Stethoscope
+  Search,
+  Star,
+  Stethoscope,
+  Trash2,
+  X
 } from 'lucide-react';
-import { adminAPI } from '../../services/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import {adminAPI} from '../../services/api';
 
 const ReviewManagement = () => {
   // Props destructuring (none for this component)
@@ -60,44 +52,20 @@ const ReviewManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      // For now, we'll use localStorage data as fallback
-      const sampleReviews = [
-        {
-          id: '1',
-          patientId: { id: '1', profile: { firstName: 'John', lastName: 'Doe' }, email: 'john@example.com' },
-          doctorId: { id: '1', profile: { firstName: 'Jane', lastName: 'Smith', specialization: 'Cardiology' } },
-          rating: 5,
-          comment: 'Excellent doctor! Very professional and caring. The consultation was thorough and I felt heard.',
-          status: 'approved',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          patientId: { id: '2', profile: { firstName: 'Alice', lastName: 'Johnson' }, email: 'alice@example.com' },
-          doctorId: { id: '2', profile: { firstName: 'Bob', lastName: 'Wilson', specialization: 'Dermatology' } },
-          rating: 4,
-          comment: 'Good experience overall. The doctor was knowledgeable and the treatment was effective.',
-          status: 'pending',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          updatedAt: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-          id: '3',
-          patientId: { id: '3', profile: { firstName: 'Mike', lastName: 'Brown' }, email: 'mike@example.com' },
-          doctorId: { id: '1', profile: { firstName: 'Jane', lastName: 'Smith', specialization: 'Cardiology' } },
-          rating: 2,
-          comment: 'Not satisfied with the service. Long waiting time and rushed consultation.',
-          status: 'removed',
-          removedReason: 'Inappropriate content',
-          createdAt: new Date(Date.now() - 172800000).toISOString(),
-          updatedAt: new Date(Date.now() - 172800000).toISOString()
+        // Use real API call to fetch reviews
+        const response = await adminAPI.getReviews();
+        if (response.data && response.data.reviews) {
+            setReviews(response.data.reviews);
+        } else {
+            setReviews([]);
         }
-      ];
-      setReviews(sampleReviews);
     } catch (error) {
       console.error('Failed to fetch reviews:', error);
       setError('Failed to load reviews');
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load reviews. Please check your connection and try again.');
+        });
     } finally {
       setLoading(false);
     }
@@ -105,12 +73,23 @@ const ReviewManagement = () => {
 
   const fetchPatientsAndDoctors = useCallback(async () => {
     try {
-      const registeredUsers = JSON.parse(localStorage.getItem('demoAccounts') || '[]');
-      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
-      setPatients(registeredUsers.filter(user => user.role === 'patient'));
-      setDoctors(registeredDoctors);
+        // Fetch patients
+        const patientsResponse = await adminAPI.getUsers({role: 'patient'});
+        if (patientsResponse.data && patientsResponse.data.users) {
+            setPatients(patientsResponse.data.users);
+        }
+
+        // Fetch doctors
+        const doctorsResponse = await adminAPI.getDoctors();
+        if (doctorsResponse.data && doctorsResponse.data.doctors) {
+            setDoctors(doctorsResponse.data.doctors);
+        }
     } catch (error) {
       console.error('Failed to fetch patients and doctors:', error);
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load patients and doctors. Please check your connection and try again.');
+        });
     }
   }, []);
 

@@ -1,35 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  FileBarChart,
-  Search,
-  Filter,
-  User,
-  LogOut,
-  Edit,
-  Trash2,
-  Eye,
-  Clock,
+import React, {useCallback, useEffect, useState} from 'react';
+import {
   Activity,
   AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Settings,
-  Users,
+  CheckCircle as CheckCircleIcon,
+  Clock,
+  Database,
+  Download,
+  Edit,
+  Eye,
+  FileBarChart,
+  Globe,
+  LogOut,
+  Mail,
+  Monitor,
   Plus,
   Save,
-  Download,
-  CheckCircle as CheckCircleIcon,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar as CalendarIcon,
-  Shield,
-  Database,
-  Monitor,
-  Globe
+  Search,
+  Settings,
+  Trash2,
+  User,
+  Users
 } from 'lucide-react';
-import { adminAPI } from '../../services/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import {adminAPI} from '../../services/api';
 
 const AdminLogs = () => {
   // Props destructuring (none for this component)
@@ -69,49 +61,20 @@ const AdminLogs = () => {
     try {
       setLoading(true);
       setError(null);
-      // For now, we'll use localStorage data as fallback
-      const sampleLogs = [
-        {
-          id: '1',
-          adminId: { id: '1', profile: { firstName: 'Admin', lastName: 'User' }, email: 'admin@example.com' },
-          action: 'login',
-          target_table: 'users',
-          target_id: '123',
-          timestamp: new Date().toISOString(),
-          ip_address: '192.168.1.1',
-          user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          details: { login_method: 'password', success: true },
-          severity: 'info'
-        },
-        {
-          id: '2',
-          adminId: { id: '1', profile: { firstName: 'Admin', lastName: 'User' }, email: 'admin@example.com' },
-          action: 'delete',
-          target_table: 'patients',
-          target_id: '456',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          ip_address: '192.168.1.1',
-          user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          details: { patient_name: 'John Doe', reason: 'Data cleanup' },
-          severity: 'warning'
-        },
-        {
-          id: '3',
-          adminId: { id: '2', profile: { firstName: 'Super', lastName: 'Admin' }, email: 'superadmin@example.com' },
-          action: 'create',
-          target_table: 'doctors',
-          target_id: '789',
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-          ip_address: '192.168.1.2',
-          user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          details: { doctor_name: 'Dr. Jane Smith', specialization: 'Cardiology' },
-          severity: 'info'
+        // Use real API call to fetch logs
+        const response = await adminAPI.getLogs();
+        if (response.data && response.data.logs) {
+            setLogs(response.data.logs);
+        } else {
+            setLogs([]);
         }
-      ];
-      setLogs(sampleLogs);
     } catch (error) {
       console.error('Failed to fetch logs:', error);
-      setError('Failed to load admin logs');
+        setError('Failed to load logs');
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load logs. Please check your connection and try again.');
+        });
     } finally {
       setLoading(false);
     }
@@ -119,10 +82,17 @@ const AdminLogs = () => {
 
   const fetchAdmins = useCallback(async () => {
     try {
-      const registeredUsers = JSON.parse(localStorage.getItem('demoAccounts') || '[]');
-      setAdmins(registeredUsers.filter(user => user.role === 'admin'));
+        // Fetch admins
+        const adminsResponse = await adminAPI.getUsers({role: 'admin'});
+        if (adminsResponse.data && adminsResponse.data.users) {
+            setAdmins(adminsResponse.data.users);
+        }
     } catch (error) {
       console.error('Failed to fetch admins:', error);
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load admins. Please check your connection and try again.');
+        });
     }
   }, []);
 

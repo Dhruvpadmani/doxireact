@@ -1,31 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Calendar, 
-  Search, 
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  Clock,
+import React, {useCallback, useEffect, useState} from 'react';
+import {
+  AlertCircle,
+  Calendar,
+  Calendar as CalendarIcon,
   CheckCircle,
-  XCircle,
-  User,
-  Stethoscope,
-  MessageCircle,
-  CalendarX,
-  CalendarCheck,
+  CheckCircle as CheckCircleIcon,
+  Clock,
+  Edit,
+  Eye,
+  Mail,
   Plus,
   Save,
-  AlertCircle,
-  CheckCircle as CheckCircleIcon,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar as CalendarIcon,
-  X
+  Search,
+  Stethoscope,
+  Trash2,
+  X,
+  XCircle
 } from 'lucide-react';
-import { adminAPI } from '../../services/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import {adminAPI} from '../../services/api';
 
 const AppointmentManagement = () => {
   // Props destructuring (none for this component)
@@ -64,12 +56,20 @@ const AppointmentManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      // For now, we'll use localStorage data as fallback
-      const patientAppointments = JSON.parse(localStorage.getItem('patientAppointments') || '[]');
-      setAppointments(patientAppointments);
+        // Use real API call to fetch appointments
+        const response = await adminAPI.getAppointments();
+        if (response.data && response.data.appointments) {
+            setAppointments(response.data.appointments);
+        } else {
+            setAppointments([]);
+        }
     } catch (error) {
       console.error('Failed to fetch appointments:', error);
       setError('Failed to load appointments');
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load appointments. Please check your connection and try again.');
+        });
     } finally {
       setLoading(false);
     }
@@ -77,12 +77,23 @@ const AppointmentManagement = () => {
 
   const fetchPatientsAndDoctors = useCallback(async () => {
     try {
-      const registeredUsers = JSON.parse(localStorage.getItem('demoAccounts') || '[]');
-      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
-      setPatients(registeredUsers.filter(user => user.role === 'patient'));
-      setDoctors(registeredDoctors);
+        // Fetch patients
+        const patientsResponse = await adminAPI.getUsers({role: 'patient'});
+        if (patientsResponse.data && patientsResponse.data.users) {
+            setPatients(patientsResponse.data.users);
+        }
+
+        // Fetch doctors
+        const doctorsResponse = await adminAPI.getDoctors();
+        if (doctorsResponse.data && doctorsResponse.data.doctors) {
+            setDoctors(doctorsResponse.data.doctors);
+        }
     } catch (error) {
       console.error('Failed to fetch patients and doctors:', error);
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load patients and doctors. Please check your connection and try again.');
+        });
     }
   }, []);
 

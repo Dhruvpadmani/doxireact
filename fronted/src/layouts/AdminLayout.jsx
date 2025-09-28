@@ -1,30 +1,26 @@
-import { useState, useRef, useEffect } from 'react';
-import { 
-  Users, 
-  UserCheck, 
-  Calendar, 
-  FileText, 
-  Star, 
-  AlertTriangle,
-  TrendingUp,
-  Activity,
-  Menu,
-  X,
-  MessageCircle,
-  Settings,
-  FileBarChart,
-  LogOut,
-  Bell,
-  Moon,
-  Sun,
-  User,
-  ChevronDown,
-  Stethoscope,
-  Heart
+import {useEffect, useRef, useState} from 'react';
+import {
+    Activity,
+    Bell,
+    Calendar,
+    ChevronDown,
+    FileBarChart,
+    FileText,
+    LogOut,
+    Menu,
+    Moon,
+    Settings,
+    Star,
+    Sun,
+    TrendingUp,
+    User,
+    UserCheck,
+    Users,
+    X
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {useAuth} from '../contexts/AuthContext';
+import {useTheme} from '../contexts/ThemeContext';
+import {Outlet, useLocation, useNavigate} from 'react-router-dom';
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -44,8 +40,6 @@ export default function AdminLayout() {
     { path: 'appointments', label: 'Appointment Management', icon: Calendar },
     { path: 'reports', label: 'Report Management', icon: FileText },
     { path: 'reviews', label: 'Review Management', icon: Star },
-    { path: 'calendar', label: 'Calendar', icon: Calendar },
-    { path: 'notifications', label: 'Notifications', icon: MessageCircle },
     { path: 'analytics', label: 'Analytics', icon: TrendingUp },
     { path: 'logs', label: 'Admin Logs', icon: FileBarChart },
     { path: 'settings', label: 'Settings', icon: Settings }

@@ -1,34 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  UserCheck, 
-  Search, 
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  UserX,
-  UserPlus,
-  Clock,
-  Check,
-  X as XIcon,
-  Calendar,
-  FileText,
-  Star,
-  Plus,
-  Save,
+import React, {useCallback, useEffect, useState} from 'react';
+import {
   AlertCircle,
+  Check,
   CheckCircle,
-  Phone,
+  Clock,
+  Edit,
+  Eye,
   Mail,
   MapPin,
-  User,
+  Phone,
+  Plus,
+  Save,
+  Search,
   Stethoscope,
-  GraduationCap,
-  Award,
-  Building
+  Trash2,
+  User,
+  UserCheck,
+  UserX,
+  X as XIcon
 } from 'lucide-react';
-import { adminAPI } from '../../services/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import {adminAPI} from '../../services/api';
 
 const DoctorManagement = () => {
   // Props destructuring (none for this component)
@@ -70,12 +61,20 @@ const DoctorManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      // For now, we'll use localStorage data as fallback
-      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
-      setDoctors(registeredDoctors);
+        // Use real API call to fetch doctors
+        const response = await adminAPI.getDoctors();
+        if (response.data && response.data.doctors) {
+            setDoctors(response.data.doctors);
+        } else {
+            setDoctors([]);
+        }
     } catch (error) {
       console.error('Failed to fetch doctors:', error);
       setError('Failed to load doctors');
+        // Show user-friendly error message
+        import('react-hot-toast').then((toast) => {
+            toast.error('Failed to load doctors. Please check your connection and try again.');
+        });
     } finally {
       setLoading(false);
     }
