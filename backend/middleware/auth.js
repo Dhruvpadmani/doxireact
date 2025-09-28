@@ -18,7 +18,8 @@ const authenticateToken = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({ 
         message: 'Access token required',
-        code: 'NO_TOKEN'
+        code: 'NO_TOKEN',
+        details: 'Please ensure credentials are included in the request'
       });
     }
 
@@ -45,7 +46,8 @@ const authenticateToken = async (req, res, next) => {
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ 
         message: 'Invalid token',
-        code: 'INVALID_TOKEN'
+        code: 'INVALID_TOKEN',
+        details: error.message
       });
     }
     if (error.name === 'TokenExpiredError') {
@@ -56,7 +58,8 @@ const authenticateToken = async (req, res, next) => {
     }
     return res.status(500).json({ 
       message: 'Authentication error',
-      code: 'AUTH_ERROR'
+      code: 'AUTH_ERROR',
+      details: error.message
     });
   }
 };

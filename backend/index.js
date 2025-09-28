@@ -18,10 +18,12 @@ const io = new Server(server, {
   cors: {
     origin: [
       process.env.FRONTEND_URL || "http://localhost:5173",
-      "http://localhost:4175", // Vite preview port
+      "http://localhost:4174", // Vite preview port (current)
+      "http://localhost:4175", // Vite preview port (alternative)
       "http://localhost:3000"  // Alternative dev port
     ],
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -40,7 +42,8 @@ app.use(limiter);
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || "http://localhost:5173",
-    "http://localhost:4175", // Vite preview port
+    "http://localhost:4174", // Vite preview port (current)
+    "http://localhost:4175", // Vite preview port (alternative)
     "http://localhost:3000"  // Alternative dev port
   ],
   credentials: true
