@@ -29,9 +29,9 @@ export default function ProtectedRoute({
     );
   }
 
-  // Check if user is authenticated
-  const isUserAuthenticated = isAuthenticated();
-  
+  // Check if user is authenticated (user exists and loading is complete)
+  const isUserAuthenticated = !loading && user;
+
   // If not authenticated, redirect to login
   if (!isUserAuthenticated) {
     console.log('❌ User not authenticated, redirecting to login');

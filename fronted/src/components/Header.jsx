@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function Header({ sidebarOpen, setSidebarOpen, userRole = 'patient' }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
@@ -22,6 +23,7 @@ export default function Header({ sidebarOpen, setSidebarOpen, userRole = 'patien
   const notificationsRef = useRef(null)
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -244,6 +246,25 @@ export default function Header({ sidebarOpen, setSidebarOpen, userRole = 'patien
                 </div>
                 
                 <div className="py-2">
+                  <a
+                    href="#"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setProfileDropdownOpen(false)
+                      // Navigate to the appropriate dashboard based on role
+                      if (user?.role === 'admin') {
+                        navigate('/admin')
+                      } else if (user?.role === 'doctor') {
+                        navigate('/doctor')
+                      } else {
+                        navigate('/patient')
+                      }
+                    }}
+                  >
+                    <Heart className="h-4 w-4 mr-3" />
+                    Dashboard
+                  </a>
                   <a
                     href="#"
                     className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
