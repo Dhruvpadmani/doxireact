@@ -1,7 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
-import { AuthProvider } from './contexts/AuthContext'
-import { ThemeProvider } from './contexts/ThemeContext'
+import {Navigate, Route, Routes} from 'react-router-dom'
+import {Toaster} from 'react-hot-toast'
+import {AuthProvider} from './contexts/AuthContext'
+import {ThemeProvider} from './contexts/ThemeContext'
 import DashboardRedirect from './DashboardRedirect'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -14,7 +14,6 @@ import AppointmentManagement from './pages/admin/AppointmentManagement'
 import ReportManagement from './pages/admin/ReportManagement'
 import ReviewManagement from './pages/admin/ReviewManagement'
 import CalendarManagement from './pages/admin/CalendarManagement'
-import NotificationsSettings from './pages/admin/NotificationsSettings'
 import NotificationsSettingsFixed from './pages/admin/NotificationsSettingsFixed'
 import ReportsAnalytics from './pages/admin/ReportsAnalytics'
 import AdminLogs from './pages/admin/AdminLogs'
@@ -30,16 +29,16 @@ import StandaloneDoctorAppointments from './pages/DoctorAppointments'
 import DoctorLayout from './layouts/DoctorLayout'
 import PatientDashboard from './pages/patient/PatientDashboard'
 import PatientFindDoctor from './pages/patient/FindDoctorNew'
-import MedicalReports from './pages/patient/MedicalReports'
-import TestAuth from './pages/patient/TestAuth'
+import MedicalReports from './pages/patient/MedicalReportsFixed'
+
 import Reviews from './pages/patient/Reviews'
 import MedicalHistory from './pages/patient/MedicalHistory'
 import StandalonePatientDashboard from './pages/PatientDashboard'
 import BookAppointment from './pages/patient/BookAppointment'
 import StandaloneBookAppointment from './pages/BookAppointment'
+import PatientProfile from './pages/patient/Profile'
 import PatientLayout from './layouts/PatientLayout'
 import AdminLayout from './layouts/AdminLayout'
-import LoadingSpinner from './components/LoadingSpinner'
 import ProtectedRoute from './components/ProtectedRoute'
 import Unauthorized from './pages/Unauthorized'
 
@@ -119,7 +118,8 @@ function AppRoutes() {
         <Route path="medical-reports" element={<MedicalReports />} />
                 <Route path="reviews" element={<Reviews />} />
                 <Route path="medical-history" element={<MedicalHistory />} />
-        <Route path="test-auth" element={<TestAuth />} />
+          <Route path="profile" element={<PatientProfile/>}/>
+        
       </Route>
       
       {/* Standalone Pages (Need Authentication) */}
