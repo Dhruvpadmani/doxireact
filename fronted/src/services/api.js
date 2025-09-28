@@ -2,6 +2,11 @@ import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
+console.log('🌐 API Configuration:', {
+  API_BASE_URL,
+  VITE_API_URL: import.meta.env.VITE_API_URL
+})
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -52,8 +57,10 @@ api.interceptors.response.use(
     }
     
     if (error.response?.status === 401) {
-      // Redirect to login on 401
-      window.location.href = '/login';
+      // Only redirect if not already on login page to prevent infinite loops
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error)
   }

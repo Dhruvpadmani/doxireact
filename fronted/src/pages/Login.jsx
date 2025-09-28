@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Eye, EyeOff, Mail, Lock, Stethoscope } from 'lucide-react'
@@ -9,9 +9,25 @@ import LoadingSpinner from '../components/LoadingSpinner'
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, user, loading } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
+
+  // Redirect if user is already authenticated
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('👤 User already authenticated, redirecting...')
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true })
+      } else if (user.role === 'doctor') {
+        navigate('/doctor', { replace: true })
+      } else if (user.role === 'patient') {
+        navigate('/patient', { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
+    }
+  }, [user, loading, navigate])
 
   const {
     register,
@@ -20,12 +36,28 @@ export default function Login() {
   } = useForm()
 
   const onSubmit = async (data) => {
+    console.log('📝 Login form submitted with data:', data)
     setIsLoading(true)
-    const result = await login(data.email, data.password)
-    setIsLoading(false)
+    try {
+      const result = await login(data.email, data.password)
+      console.log('✅ Login result:', result)
+    } catch (error) {
+      console.error('❌ Login form error:', error)
+    } finally {
+      setIsLoading(false)
+    }
     
     // Navigation is handled inside the login function in AuthContext
     // Navigation is handled within the login function itself
+  }
+
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="xl" />
+      </div>
+    )
   }
 
   return (

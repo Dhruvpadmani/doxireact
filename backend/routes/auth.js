@@ -20,7 +20,7 @@ const setTokenCookie = (res, token) => {
   res.cookie('token', token, {
     httpOnly: true,  // Prevents XSS attacks
     secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-    sameSite: 'strict', // CSRF protection
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Adjust for development
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
   });
 };
@@ -196,6 +196,9 @@ router.get('/me', authenticateToken, async (req, res) => {
       roleData = await Patient.findOne({ userId: user._id });
     } else if (user.role === 'doctor') {
       roleData = await Doctor.findOne({ userId: user._id });
+    } else if (user.role === 'admin') {
+      // Admin might not have specific role data, but we can return a placeholder
+      roleData = { isAdmin: true };
     }
 
     res.json({
@@ -309,17 +312,71 @@ router.put('/change-password', authenticateToken, [
 });
 
 // Logout (clear token cookie)
-router.post('/logout', authenticateToken, (req, res) => {
-  // Clear the token cookie
+router.post('/logout', (req, res) => {
+  // Clear the token cookie regardless of authentication status
   res.clearCookie('token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
   });
   
   res.json({
     message: 'Logout successful'
   });
+});
+
+// Check authentication status without error (for debugging)
+router.get('/check-auth', (req, res) => {
+  try {
+    // Try to get token from header first, then from cookies
+    let token = null;
+    
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]; // Bearer TOKEN
+    } else {
+      // Try to get token from cookies
+      token = req.cookies?.token;
+    }
+
+    if (!token) {
+      return res.json({ 
+        authenticated: false,
+        message: 'No token found',
+        hasAuthHeader: !!authHeader,
+        hasCookie: !!req.cookies?.token,
+        cookies: req.cookies,
+        headers: {
+          authorization: req.headers['authorization'],
+          origin: req.headers['origin'],
+          referer: req.headers['referer']
+        }
+      });
+    }
+
+    // Try to verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // If token is valid, return success
+    res.json({
+      authenticated: true,
+      hasValidToken: true,
+      tokenPayload: decoded
+    });
+  } catch (error) {
+    res.json({ 
+      authenticated: false,
+      hasValidToken: false,
+      error: error.message,
+      hasToken: !!req.headers['authorization'] || !!req.cookies?.token,
+      cookies: req.cookies,
+      headers: {
+        authorization: req.headers['authorization'],
+        origin: req.headers['origin'],
+        referer: req.headers['referer']
+      }
+    });
+  }
 });
 
 // Refresh token

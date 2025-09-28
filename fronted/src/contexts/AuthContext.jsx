@@ -65,21 +65,13 @@ export function AuthProvider({ children }) {
       if (savedUser) {
         try {
           const userData = JSON.parse(savedUser)
-          console.log('✅ Using saved user data immediately:', userData.email)
+          console.log('✅ Found saved user data:', userData.email)
           
-          // First, set the user as authenticated with saved data
-          dispatch({
-            type: 'AUTH_SUCCESS',
-            payload: {
-              user: userData
-            }
-          })
-          
-          // Then try to validate with backend in background
-          console.log('🔄 Attempting backend validation in background...')
+          // Try to validate with backend first
+          console.log('🔄 Attempting backend validation...')
           try {
             const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout')), 3000)
+              setTimeout(() => reject(new Error('Timeout')), 5000)
             )
             
             const response = await Promise.race([
@@ -87,7 +79,7 @@ export function AuthProvider({ children }) {
               timeoutPromise
             ])
             
-            console.log('✅ Backend validation successful, updating user data')
+            console.log('✅ Backend validation successful, setting user as authenticated')
             dispatch({
               type: 'AUTH_SUCCESS',
               payload: {
@@ -97,8 +89,13 @@ export function AuthProvider({ children }) {
             // Update local storage with fresh user data
             localStorage.setItem('user', JSON.stringify(response.data.user))
           } catch (backendError) {
-            console.log('⚠️ Backend validation failed, keeping saved data:', backendError.message)
-            // Keep the saved user data, don't change anything
+            console.log('⚠️ Backend validation failed, clearing saved data:', backendError.message)
+            // Backend validation failed, clear saved data and redirect to login
+            localStorage.removeItem('user')
+            dispatch({
+              type: 'AUTH_FAILURE',
+              payload: 'Session expired'
+            })
           }
         } catch (parseError) {
           // If saved user data is invalid, clear everything
@@ -120,9 +117,12 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = async (email, password) => {
+    console.log('🔐 Login attempt started:', { email })
     dispatch({ type: 'AUTH_START' })
     try {
+      console.log('📡 Calling authAPI.login...')
       const response = await authAPI.login(email, password)
+      console.log('✅ Login API response received:', response.data)
       const { user } = response.data  // Token is now in cookie
       
       localStorage.setItem('user', JSON.stringify(user))
@@ -146,7 +146,12 @@ export function AuthProvider({ children }) {
       
       return { success: true }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('❌ Login error:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
       
       // Check if this is a demo account (only if backend is completely unavailable)
       if (!error.response) {
@@ -327,9 +332,8 @@ export function AuthProvider({ children }) {
 
   // Check if user is authenticated
   const isAuthenticated = () => {
-    // Only return true if user exists, regardless of loading state
-    // ProtectedRoute handles the loading state separately
-    return !!state.user;
+    // Only return true if user exists and loading is complete
+    return !state.loading && !!state.user;
   }
 
   // Check user role
