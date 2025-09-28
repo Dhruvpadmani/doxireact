@@ -8,15 +8,13 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true // This enables cookies to be sent with requests
 })
 
-// Request interceptor to add auth token
+// Request interceptor - no need to manually add token since withCredentials is true
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    // Since withCredentials is true, the token cookie will be automatically included
     return config
   },
   (error) => {
@@ -24,13 +22,38 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor to handle errors
-api.interceptors.response.use(
-  (response) => response,
+// Request interceptor to log API calls
+api.interceptors.request.use(
+  (config) => {
+    console.log(`%c➡️ ${config.method?.toUpperCase()} ${config.url}`, 'color: #008800; font-weight: bold;');
+    return config;
+  },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to handle errors and log responses
+api.interceptors.response.use(
+  (response) => {
+    console.log(`%c✅ ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`, 'color: #000088; font-weight: bold;');
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      // Server responded with error status
+      console.log(`%c❌ ${error.config.method?.toUpperCase()} ${error.config.url} - ${error.response.status}`, 'color: #880000; font-weight: bold;');
+    } else if (error.request) {
+      // Request was made but no response received
+      console.log(`%c📡 ${error.config.method?.toUpperCase()} ${error.config.url} - NO RESPONSE`, 'color: #884400; font-weight: bold;');
+    } else {
+      // Something else happened
+      console.log(`%c💥 API SETUP ERROR - ${error.message}`, 'color: #880088; font-weight: bold;');
+    }
+    
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+      // Redirect to login on 401
+      window.location.href = '/login';
     }
     return Promise.reject(error)
   }

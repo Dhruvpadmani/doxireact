@@ -15,6 +15,16 @@ const generateToken = (userId) => {
   });
 };
 
+// Set token in cookie
+const setTokenCookie = (res, token) => {
+  res.cookie('token', token, {
+    httpOnly: true,  // Prevents XSS attacks
+    secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
+    sameSite: 'strict', // CSRF protection
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+  });
+};
+
 // Register new user
 router.post('/register', [
   body('email').isEmail().normalizeEmail(),
@@ -81,9 +91,12 @@ router.post('/register', [
     // Generate token
     const token = generateToken(user._id);
 
+    // Set token in cookie instead of returning in response
+    setTokenCookie(res, token);
+
     res.status(201).json({
       message: 'User registered successfully',
-      token,
+      // Don't send token in response for improved security
       user: {
         id: user._id,
         email: user.email,
@@ -149,9 +162,12 @@ router.post('/login', [
     // Generate token
     const token = generateToken(user._id);
 
+    // Set token in cookie instead of returning in response
+    setTokenCookie(res, token);
+
     res.json({
       message: 'Login successful',
-      token,
+      // Don't send token in response for improved security
       user: {
         id: user._id,
         email: user.email,
@@ -292,8 +308,15 @@ router.put('/change-password', authenticateToken, [
   }
 });
 
-// Logout (client-side token removal)
+// Logout (clear token cookie)
 router.post('/logout', authenticateToken, (req, res) => {
+  // Clear the token cookie
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  
   res.json({
     message: 'Logout successful'
   });
@@ -304,9 +327,12 @@ router.post('/refresh', authenticateToken, (req, res) => {
   try {
     const newToken = generateToken(req.user._id);
     
+    // Set new token in cookie
+    setTokenCookie(res, newToken);
+    
     res.json({
-      message: 'Token refreshed successfully',
-      token: newToken
+      message: 'Token refreshed successfully'
+      // Don't send token in response for improved security
     });
   } catch (error) {
     console.error('Refresh token error:', error);

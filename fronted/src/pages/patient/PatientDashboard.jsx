@@ -61,51 +61,46 @@ export default function PatientDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Load appointments from localStorage - user specific
-      const userSpecificAppointments = localStorage.getItem(`patientAppointments_${user.id}`)
-      const localAppointments = userSpecificAppointments ? JSON.parse(userSpecificAppointments) : []
-      
-      // Load reports from localStorage - user specific
-      const userSpecificReports = localStorage.getItem(`patientReports_${user.id}`)
-      const localReports = userSpecificReports ? JSON.parse(userSpecificReports) : []
-      
-      // Fetch other data from API
-      const [prescriptionsRes] = await Promise.all([
-        patientAPI.getPrescriptions().catch(() => ({ data: { prescriptions: [] } }))
+      // Fetch data from API
+      const [dashboardRes, prescriptionsRes] = await Promise.all([
+        patientAPI.getDashboard(),
+        patientAPI.getPrescriptions()
       ])
 
-      // Calculate upcoming appointments (future dates) from localStorage
-      const today = new Date()
-      const upcomingAppointments = localAppointments.filter(apt => {
-        const appointmentDate = new Date(apt.appointmentDate || apt.date)
-        return appointmentDate > today && apt.status !== 'cancelled'
-      }).length
-      
-      console.log('📊 Dashboard data calculation:')
-      console.log('Total appointments:', localAppointments.length)
-      console.log('Upcoming appointments:', upcomingAppointments)
-      console.log('Today:', today.toISOString().split('T')[0])
+      const dashboardData = dashboardRes.data;
+      const prescriptionsData = prescriptionsRes.data.prescriptions || [];
 
-      // Count medical reports from localStorage
-      const medicalReports = localReports.length
-
-      // Count active prescriptions (not expired)
-      const activePrescriptions = prescriptionsRes.data.prescriptions?.filter(pres => 
+      // Calculate statistics from API data
+      const statistics = dashboardData.statistics || {};
+      const activePrescriptions = prescriptionsData.filter(pres => 
         !pres.isExpired && pres.status === 'active'
-      ).length || 0
-
-      // Calculate health score based on various factors
-      const healthScore = calculateHealthScore(upcomingAppointments, medicalReports, activePrescriptions)
+      ).length;
 
       setDashboardData({
-        upcomingAppointments,
-        medicalReports,
+        upcomingAppointments: statistics.upcomingAppointments || 0,
+        medicalReports: statistics.totalReports || 0,
         activePrescriptions,
-        healthScore
+        healthScore: statistics.healthScore || 0 // if available in API, otherwise calculate
       })
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
-      // Keep default values (all zeros) when API fails
+      // Fallback to a user-friendly error state instead of localStorage
+      setDashboardData({
+        upcomingAppointments: 0,
+        medicalReports: 0,
+        activePrescriptions: 0,
+        healthScore: 0
+      })
+      
+      // Show user-friendly error message
+      if (error.response?.status === 401) {
+        // Already handled by interceptor
+      } else {
+        // Show toast notification about network error
+        import('react-hot-toast').then((toast) => {
+          toast.error('Failed to load dashboard data. Please check your connection and try again.');
+        });
+      }
     } finally {
       setLoading(false)
     }

@@ -18,9 +18,8 @@ export function withAuthProtection(WrappedComponent, allowedRoles = []) {
     
     // Check if user data exists in localStorage as fallback
     const savedUser = localStorage.getItem('user')
-    const token = localStorage.getItem('token')
     
-    if (!user && !savedUser && !token) {
+    if (!user && !savedUser) {
       return <Navigate to="/login" replace />
     }
     
@@ -44,9 +43,8 @@ export function useProtectedRoute(allowedRoles = []) {
     if (!loading) {
       // Check if user data exists in localStorage as fallback
       const savedUser = localStorage.getItem('user')
-      const token = localStorage.getItem('token')
       
-      if (!user && !savedUser && !token) {
+      if (!user && !savedUser) {
         navigate('/login')
         return
       }

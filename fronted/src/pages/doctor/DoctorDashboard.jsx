@@ -60,6 +60,14 @@ export default function DoctorDashboard() {
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
+      
+      // Show user-friendly error message
+      if (error.response?.status !== 401) { // 401 already handled by interceptor
+        import('react-hot-toast').then((toast) => {
+          toast.error('Failed to load dashboard data. Please check your connection and try again.');
+        });
+      }
+      
       // Fallback to empty state if API fails
       setDashboardData({
         statistics: {

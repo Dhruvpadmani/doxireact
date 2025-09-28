@@ -6,8 +6,7 @@ import toast from 'react-hot-toast'
 const AuthContext = createContext()
 
 const initialState = {
-  user: null,
-  token: localStorage.getItem('token'),
+  user: JSON.parse(localStorage.getItem('user')) || null,
   loading: true,
   error: null
 }
@@ -24,7 +23,6 @@ function authReducer(state, action) {
       return {
         ...state,
         user: action.payload.user,
-        token: action.payload.token,
         loading: false,
         error: null
       }
@@ -32,7 +30,6 @@ function authReducer(state, action) {
       return {
         ...state,
         user: null,
-        token: null,
         loading: false,
         error: action.payload
       }
@@ -40,7 +37,6 @@ function authReducer(state, action) {
       return {
         ...state,
         user: null,
-        token: null,
         loading: false,
         error: null
       }
@@ -62,13 +58,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkAuth = async () => {
       console.log('🔍 Checking authentication on app start...')
-      const token = localStorage.getItem('token')
       const savedUser = localStorage.getItem('user')
       
-      console.log('📝 Token exists:', !!token)
       console.log('👤 User data exists:', !!savedUser)
       
-      if (token && savedUser) {
+      if (savedUser) {
         try {
           const userData = JSON.parse(savedUser)
           console.log('✅ Using saved user data immediately:', userData.email)
@@ -77,13 +71,9 @@ export function AuthProvider({ children }) {
           dispatch({
             type: 'AUTH_SUCCESS',
             payload: {
-              user: userData,
-              token
+              user: userData
             }
           })
-          
-          // Add a small delay to ensure state is updated
-          await new Promise(resolve => setTimeout(resolve, 100))
           
           // Then try to validate with backend in background
           console.log('🔄 Attempting backend validation in background...')
@@ -101,10 +91,11 @@ export function AuthProvider({ children }) {
             dispatch({
               type: 'AUTH_SUCCESS',
               payload: {
-                user: response.data.user,
-                token
+                user: response.data.user
               }
             })
+            // Update local storage with fresh user data
+            localStorage.setItem('user', JSON.stringify(response.data.user))
           } catch (backendError) {
             console.log('⚠️ Backend validation failed, keeping saved data:', backendError.message)
             // Keep the saved user data, don't change anything
@@ -112,7 +103,6 @@ export function AuthProvider({ children }) {
         } catch (parseError) {
           // If saved user data is invalid, clear everything
           console.log('❌ Invalid saved user data, clearing storage')
-          localStorage.removeItem('token')
           localStorage.removeItem('user')
           dispatch({
             type: 'AUTH_FAILURE',
@@ -120,8 +110,8 @@ export function AuthProvider({ children }) {
           })
         }
       } else {
-        // No token or user data, set loading to false
-        console.log('❌ No token or user data found')
+        // No user data, set loading to false
+        console.log('❌ No user data found')
         dispatch({ type: 'AUTH_FAILURE', payload: null })
       }
     }
@@ -133,13 +123,12 @@ export function AuthProvider({ children }) {
     dispatch({ type: 'AUTH_START' })
     try {
       const response = await authAPI.login(email, password)
-      const { token, user } = response.data
+      const { user } = response.data  // Token is now in cookie
       
-      localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify(user))
       dispatch({
         type: 'AUTH_SUCCESS',
-        payload: { user, token }
+        payload: { user }
       })
       
       toast.success('Login successful!')
@@ -165,11 +154,10 @@ export function AuthProvider({ children }) {
       const demoUser = demoAccounts.find(account => account.email === email && account.password === password)
       
       if (demoUser) {
-        const token = 'demo-token-' + Date.now()
-        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(demoUser))
         dispatch({
           type: 'AUTH_SUCCESS',
-          payload: { user: demoUser, token }
+          payload: { user: demoUser }
         })
         
         toast.success('Demo login successful!')
@@ -202,12 +190,12 @@ export function AuthProvider({ children }) {
     dispatch({ type: 'AUTH_START' })
     try {
       const response = await authAPI.register(userData)
-      const { token, user } = response.data
+      const { user } = response.data  // Token is now in cookie
       
-      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
       dispatch({
         type: 'AUTH_SUCCESS',
-        payload: { user, token }
+        payload: { user }
       })
       
       toast.success('Registration successful!')
@@ -272,13 +260,11 @@ export function AuthProvider({ children }) {
         console.log('📋 Total registered doctors:', registeredDoctors.length)
       }
       
-      const demoToken = 'demo-token-' + Date.now()
-      
-      localStorage.setItem('token', demoToken)
+      // For demo registration, we still store user info but token is handled by cookie
       localStorage.setItem('user', JSON.stringify(demoUser))
       dispatch({
         type: 'AUTH_SUCCESS',
-        payload: { user: demoUser, token: demoToken }
+        payload: { user: demoUser }
       })
       
       toast.success('Demo account created successfully!')
@@ -304,7 +290,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
-      localStorage.removeItem('token')
+      // Clear user data from localStorage (token is cleared by server via cookie)
       localStorage.removeItem('user')
       dispatch({ type: 'LOGOUT' })
       navigate('/login')
@@ -342,7 +328,9 @@ export function AuthProvider({ children }) {
 
   // Check if user is authenticated
   const isAuthenticated = () => {
-    return !!state.user && !!state.token
+    // Only return true if user exists, regardless of loading state
+    // ProtectedRoute handles the loading state separately
+    return !!state.user;
   }
 
   // Check user role
@@ -382,7 +370,6 @@ export function AuthProvider({ children }) {
 
   const value = {
     user: state.user,
-    token: state.token,
     loading: state.loading,
     error: state.error,
     login,

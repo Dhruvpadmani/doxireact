@@ -36,27 +36,32 @@ const AdminDashboard = () => {
       setDashboardData(response.data)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
-      setError('Failed to load dashboard data')
       
-      // Fallback to localStorage data when API fails
-      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]')
-      const registeredUsers = JSON.parse(localStorage.getItem('demoAccounts') || '[]')
-      const registeredAppointments = JSON.parse(localStorage.getItem('patientAppointments') || '[]')
+      // Show user-friendly error message
+      if (error.response?.status !== 401) { // 401 already handled by interceptor
+        setError('Failed to load dashboard data. Please check your connection and try again.')
+        import('react-hot-toast').then((toast) => {
+          toast.error('Failed to load dashboard data. Please check your connection and try again.');
+        });
+      } else {
+        setError('Authentication failed. Please log in again.')
+      }
       
+      // Set to empty state instead of localStorage fallback
       setDashboardData({
         statistics: {
           total: {
-            users: registeredUsers.length,
-            doctors: registeredDoctors.length,
-            appointments: registeredAppointments.length
+            users: 0,
+            doctors: 0,
+            appointments: 0
           },
           emergency: {
             pending: 0
           }
         },
         recent: {
-          appointments: registeredAppointments.slice(0, 5),
-          users: registeredUsers.slice(0, 5)
+          appointments: [],
+          users: []
         }
       })
     } finally {

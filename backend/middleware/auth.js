@@ -4,8 +4,16 @@ const User = require('../models/User');
 // Verify JWT token
 const authenticateToken = async (req, res, next) => {
   try {
+    // Try to get token from header first, then from cookies
+    let token = null;
+    
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]; // Bearer TOKEN
+    } else {
+      // Try to get token from cookies
+      token = req.cookies?.token;
+    }
 
     if (!token) {
       return res.status(401).json({ 
@@ -94,8 +102,15 @@ const requirePatientOrAdmin = authorizeRole('patient', 'admin');
 // Optional authentication (doesn't fail if no token)
 const optionalAuth = async (req, res, next) => {
   try {
+    let token = null;
+    
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else {
+      // Try to get token from cookies
+      token = req.cookies?.token;
+    }
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
