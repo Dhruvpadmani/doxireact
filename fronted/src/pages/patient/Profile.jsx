@@ -1,34 +1,50 @@
 import {useEffect, useState} from 'react'
 import {useAuth} from '../../contexts/AuthContext'
+import {patientAPI} from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 export default function Profile() {
     const [loading, setLoading] = useState(false)
     const [editing, setEditing] = useState(false)
     const [profileData, setProfileData] = useState({})
-    const {user, updateUserProfile} = useAuth()
+    const [error, setError] = useState(null)
+    const {user} = useAuth()
 
     useEffect(() => {
         if (user) {
+            loadProfile()
+        }
+    }, [user])
+
+    const loadProfile = async () => {
+        setLoading(true)
+        try {
+            const response = await patientAPI.getProfile()
+            const userData = response.data.user
             setProfileData({
-                firstName: user.profile?.firstName || '',
-                lastName: user.profile?.lastName || '',
-                email: user.email || '',
-                phone: user.profile?.phone || '',
-                dateOfBirth: user.profile?.dateOfBirth || '',
-                gender: user.profile?.gender || '',
-                address: user.profile?.address || '',
-                medicalHistory: user.profile?.medicalHistory || [],
-                allergies: user.profile?.allergies || [],
-                medications: user.profile?.medications || [],
-                emergencyContact: user.profile?.emergencyContact || {
+                firstName: userData.profile?.firstName || '',
+                lastName: userData.profile?.lastName || '',
+                email: userData.email || '',
+                phone: userData.profile?.phone || '',
+                dateOfBirth: userData.profile?.dateOfBirth || '',
+                gender: userData.profile?.gender || '',
+                address: userData.profile?.address || '',
+                medicalHistory: userData.profile?.medicalHistory || [],
+                allergies: userData.profile?.allergies || [],
+                medications: userData.profile?.medications || [],
+                emergencyContact: userData.profile?.emergencyContact || {
                     name: '',
                     relationship: '',
                     phone: ''
                 }
             })
+        } catch (error) {
+            console.error('Error loading profile:', error)
+            setError(error.response?.data?.message || 'Failed to load profile. Please try again.')
+        } finally {
+            setLoading(false)
         }
-    }, [user])
+    }
 
     const handleInputChange = (e) => {
         const {name, value} = e.target
@@ -52,13 +68,13 @@ export default function Profile() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
+        setError(null)
         try {
-            await updateUserProfile(profileData)
+            await patientAPI.updateProfile(profileData)
             setEditing(false)
-            alert('Profile updated successfully!')
         } catch (error) {
             console.error('Error updating profile:', error)
-            alert('Failed to update profile. Please try again.')
+            setError(error.response?.data?.message || 'Failed to update profile. Please try again.')
         } finally {
             setLoading(false)
         }
@@ -89,6 +105,17 @@ export default function Profile() {
                 <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your personal information and medical
                     history</p>
             </div>
+
+            {/* Error Message */}
+            {error && (
+                <div
+                    className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                    <div className="flex items-center">
+                        <AlertCircle className="h-5 w-5 text-red-500 mr-2"/>
+                        <p className="text-red-800 dark:text-red-200">{error}</p>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
                 {editing ? (

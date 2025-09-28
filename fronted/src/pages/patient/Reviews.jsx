@@ -1,22 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { 
-  ArrowLeft,
-  Star,
-  Send,
-  MessageCircle,
-  Heart,
-  Edit,
-  Trash2,
-  Clock,
-  User,
-  Calendar
-} from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
+import React, {useEffect, useState} from 'react'
+import {AlertCircle, Clock, Edit, Heart, MessageCircle, Send, Star, Trash2, User} from 'lucide-react'
+import {useAuth} from '../../contexts/AuthContext'
+import {doctorsAPI, reviewsAPI} from '../../services/api'
 
 const Reviews = () => {
   const [activeTab, setActiveTab] = useState('write') // 'write', 'my-reviews', 'recent'
   const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
   const [reviewForm, setReviewForm] = useState({
     doctorId: '',
     rating: 0,
@@ -28,7 +18,7 @@ const Reviews = () => {
   const [hoveredStar, setHoveredStar] = useState(0)
   const { user } = useAuth()
 
-  // Load doctors from localStorage or API
+    // Load doctors from API
   const [doctors, setDoctors] = useState([])
 
   useEffect(() => {
@@ -39,77 +29,54 @@ const Reviews = () => {
 
   const loadDoctors = async () => {
     try {
+        setLoading(true)
       console.log('Loading doctors...')
-      
-      // Load registered doctors from localStorage
-      const savedDoctors = localStorage.getItem('registeredDoctors')
-      let doctorsData = []
-      
-      if (savedDoctors) {
-        try {
-          const raw = JSON.parse(savedDoctors) || []
-          console.log('Found registered doctors:', raw)
-          
-          // Properly format registered doctors to match expected structure
-          const registeredDoctors = raw.map((d) => ({
+
+        const response = await doctorsAPI.search()
+        const doctorsData = (response.data.doctors || []).map((d) => ({
             id: d.id,
             firstName: d.profile?.firstName || 'Unknown',
             lastName: d.profile?.lastName || 'Doctor',
             specialization: d.specialization || d.profile?.specialization || 'General',
             name: `Dr. ${d.profile?.firstName || 'Unknown'} ${d.profile?.lastName || 'Doctor'}`.trim()
-          }))
-          
-          doctorsData = registeredDoctors
-          console.log('Formatted doctors for reviews:', doctorsData)
-        } catch (parseError) {
-          console.error('Error parsing registered doctors:', parseError)
-        }
-      } else {
-        console.log('No registered doctors found in localStorage')
-      }
-      
-      console.log('Setting doctors:', doctorsData)
+        }))
+
+        console.log('Formatted doctors for reviews:', doctorsData)
       setDoctors(doctorsData)
     } catch (error) {
       console.error('Error loading doctors:', error)
-      // If there's an error, set empty array
-      setDoctors([])
+        setError(error.response?.data?.message || 'Failed to load doctors. Please try again.')
+    } finally {
+        setLoading(false)
     }
   }
 
   const loadMyReviews = async () => {
     try {
-      // Load reviews from localStorage
-      const savedReviews = localStorage.getItem('patientMyReviews')
-      if (savedReviews) {
-        const reviewsData = JSON.parse(savedReviews)
-        setMyReviews(reviewsData)
-      } else {
-        setMyReviews([])
-      }
+        setLoading(true)
+        const response = await reviewsAPI.getReviews({mine: true})
+        setMyReviews(response.data.reviews || [])
     } catch (error) {
       console.error('Error loading my reviews:', error)
+        setError(error.response?.data?.message || 'Failed to load your reviews. Please try again.')
       setMyReviews([])
+    } finally {
+        setLoading(false)
     }
   }
 
   const loadRecentReviews = async () => {
     try {
-      // Load recent reviews from localStorage
-      const savedRecentReviews = localStorage.getItem('patientRecentReviews')
-      if (savedRecentReviews) {
-        const recentReviewsData = JSON.parse(savedRecentReviews)
+        const response = await reviewsAPI.getReviews({limit: 10, sortBy: 'createdAt', sortOrder: 'desc'})
         // Ensure patient names are included
-        const reviewsWithPatientNames = recentReviewsData.map(review => ({
-          ...review,
-          patientName: review.patientName || `${review.patientId?.userId?.profile?.firstName || 'Anonymous'} ${review.patientId?.userId?.profile?.lastName || 'Patient'}`
+        const reviewsWithPatientNames = (response.data.reviews || []).map(review => ({
+            ...review,
+            patientName: review.patientName || `${review.patientId?.userId?.profile?.firstName || 'Anonymous'} ${review.patientId?.userId?.profile?.lastName || 'Patient'}`
         }))
         setRecentReviews(reviewsWithPatientNames)
-      } else {
-        setRecentReviews([])
-      }
     } catch (error) {
       console.error('Error loading recent reviews:', error)
+        setError(error.response?.data?.message || 'Failed to load recent reviews. Please try again.')
       setRecentReviews([])
     }
   }
@@ -117,59 +84,39 @@ const Reviews = () => {
   const handleSubmitReview = async (e) => {
     e.preventDefault()
     if (!reviewForm.doctorId || reviewForm.rating === 0 || !reviewForm.review.trim()) {
-      alert('Please fill in all fields')
+        setError('Please fill in all fields')
       return
     }
 
     setLoading(true)
+      setError(null)
     try {
-      // Mock submission
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
       if (reviewForm.editingId) {
-        // Update existing review
-        const updatedReviews = myReviews.map(review => 
-          review.id === reviewForm.editingId 
-            ? {
-                ...review,
-                doctorName: doctors.find(d => d.id === reviewForm.doctorId)?.name || 'Unknown Doctor',
-                doctorSpecialization: doctors.find(d => d.id === reviewForm.doctorId)?.specialization || 'Unknown',
-                rating: reviewForm.rating,
-                review: reviewForm.review,
-                submittedAt: new Date().toISOString(), // Update submission time
-                canEdit: true,
-                patientName: `${user?.profile?.firstName || 'Anonymous'} ${user?.profile?.lastName || 'Patient'}`
-              }
-            : review
-        )
-        setMyReviews(updatedReviews)
-        localStorage.setItem('patientMyReviews', JSON.stringify(updatedReviews))
-        alert('Review updated successfully!')
+          // Update existing review via API
+          await reviewsAPI.updateReview(reviewForm.editingId, {
+              doctorId: reviewForm.doctorId,
+              rating: reviewForm.rating,
+              review: reviewForm.review
+          })
       } else {
-        // Create new review
-        const newReview = {
-          id: Date.now().toString(),
-          doctorName: doctors.find(d => d.id === reviewForm.doctorId)?.name || 'Unknown Doctor',
-          doctorSpecialization: doctors.find(d => d.id === reviewForm.doctorId)?.specialization || 'Unknown',
+          // Create new review via API
+          await reviewsAPI.create({
+              doctorId: reviewForm.doctorId,
           rating: reviewForm.rating,
-          review: reviewForm.review,
-          submittedAt: new Date().toISOString(),
-          canEdit: true,
-          patientName: `${user?.profile?.firstName || 'Anonymous'} ${user?.profile?.lastName || 'Patient'}`
-        }
-        
-        const updatedReviews = [newReview, ...myReviews]
-        setMyReviews(updatedReviews)
-        localStorage.setItem('patientMyReviews', JSON.stringify(updatedReviews))
-        alert('Review submitted successfully!')
+              review: reviewForm.review
+          })
       }
+
+        // Refresh reviews after successful operation
+        await loadMyReviews()
+        await loadRecentReviews()
       
       // Reset form
       setReviewForm({ doctorId: '', rating: 0, review: '', editingId: null })
       setHoveredStar(0)
     } catch (error) {
       console.error('Error submitting review:', error)
-      alert('Failed to submit review. Please try again.')
+        setError(error.response?.data?.message || 'Failed to submit review. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -190,14 +137,20 @@ const Reviews = () => {
 
   const handleDeleteReview = async (reviewId) => {
     if (window.confirm('Are you sure you want to delete this review?')) {
+        setLoading(true)
+        setError(null)
       try {
-        const updatedReviews = myReviews.filter(r => r.id !== reviewId)
-        setMyReviews(updatedReviews)
-        localStorage.setItem('patientMyReviews', JSON.stringify(updatedReviews))
-        alert('Review deleted successfully!')
+          // Delete review via API
+          await reviewsAPI.deleteReview(reviewId)
+
+          // Refresh reviews after successful deletion
+          await loadMyReviews()
+          await loadRecentReviews()
       } catch (error) {
         console.error('Error deleting review:', error)
-        alert('Failed to delete review. Please try again.')
+          setError(error.response?.data?.message || 'Failed to delete review. Please try again.')
+      } finally {
+          setLoading(false)
       }
     }
   }
@@ -266,8 +219,18 @@ const Reviews = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-
       <div className="p-6">
+          {/* Error Message */}
+          {error && (
+              <div
+                  className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                  <div className="flex items-center">
+                      <AlertCircle className="h-5 w-5 text-red-500 mr-2"/>
+                      <p className="text-red-800 dark:text-red-200">{error}</p>
+                  </div>
+              </div>
+          )}
+        
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Reviews & Ratings</h1>
