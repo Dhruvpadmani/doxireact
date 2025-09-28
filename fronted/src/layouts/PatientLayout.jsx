@@ -1,17 +1,7 @@
-import { useState } from 'react'
-import { Link, useLocation, Outlet } from 'react-router-dom'
-import { 
-  Calendar, 
-  FileText, 
-  Stethoscope, 
-  Star, 
-  Activity,
-  Menu,
-  X,
-  Heart,
-  Bot,
-} from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
+import {useState} from 'react'
+import {Link, Outlet, useLocation} from 'react-router-dom'
+import {Activity, Calendar, FileText, Heart, Star, Stethoscope, User, X,} from 'lucide-react'
+import {useAuth} from '../contexts/AuthContext'
 import Header from '../components/Header'
 
 export default function PatientLayout() {
@@ -83,6 +73,13 @@ export default function PatientLayout() {
             >
               <Star className="h-5 w-5" />
               Reviews
+            </Link>
+              <Link
+                  to="/patient/profile"
+                  className={`nav-item ${location.pathname === '/patient/profile' ? 'active' : ''}`}
+              >
+                  <User className="h-5 w-5"/>
+                  Profile
             </Link>
           </div>
         </nav>
