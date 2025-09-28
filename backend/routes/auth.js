@@ -25,11 +25,11 @@ const setTokenCookie = (res, token) => {
   });
 };
 
-// Register new user
+// Register new user (only patient and doctor roles allowed)
 router.post('/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
-  body('role').isIn(['patient', 'doctor']),
+  body('role').isIn(['patient', 'doctor']).withMessage('Only patient and doctor roles are allowed for registration'),
   body('profile.firstName').notEmpty().trim().isLength({ max: 50 }),
   body('profile.lastName').notEmpty().trim().isLength({ max: 50 }),
   body('profile.phone').matches(/^\d{10}$/).withMessage('Phone number must be exactly 10 digits'),

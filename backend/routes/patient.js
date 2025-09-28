@@ -462,7 +462,7 @@ router.get('/prescriptions', async (req, res) => {
 });
 
 // Get reports
-router.get('/reports', async (req, res) => {
+router.get('/reports', authenticateToken, async (req, res) => {
   try {
     const { page = 1, limit = 10, type, status } = req.query;
     const patient = await Patient.findOne({ userId: req.user._id });
@@ -504,7 +504,7 @@ router.get('/reports', async (req, res) => {
 });
 
 // Get medical history
-router.get('/medical-history', async (req, res) => {
+router.get('/medical-history', authenticateToken, async (req, res) => {
   try {
     const patient = await Patient.findOne({ userId: req.user._id });
     

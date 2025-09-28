@@ -10,12 +10,17 @@ const { Server } = require('socket.io');
 require('dotenv').config();
 
 const { errorHandler } = require('./middleware/errorHandler');
+const { setupAdminUser } = require('./utils/adminSetup');
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:5173",
+      "http://localhost:4175", // Vite preview port
+      "http://localhost:3000"  // Alternative dev port
+    ],
     methods: ["GET", "POST"]
   }
 });
@@ -33,7 +38,11 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: [
+    process.env.FRONTEND_URL || "http://localhost:5173",
+    "http://localhost:4175", // Vite preview port
+    "http://localhost:3000"  // Alternative dev port
+  ],
   credentials: true
 }));
 
@@ -49,7 +58,16 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/doxi', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ MongoDB connected successfully'))
+.then(async () => {
+  console.log('✅ MongoDB connected successfully');
+  
+  // Setup admin user on startup
+  try {
+    await setupAdminUser();
+  } catch (error) {
+    console.error('❌ Failed to setup admin user:', error.message);
+  }
+})
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Routes
