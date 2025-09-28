@@ -140,6 +140,13 @@ doxi/
 
    # AI Assistant Configuration
    OPENAI_API_KEY=your_openai_api_key_here
+   
+   # Admin User Configuration (Created automatically on first startup)
+   ADMIN_EMAIL=admin@doxi.com
+   ADMIN_PASSWORD=admin123
+   ADMIN_FIRST_NAME=Admin
+   ADMIN_LAST_NAME=User
+   ADMIN_PHONE=1234567890
    ```
 
 5. **Start MongoDB**
@@ -163,10 +170,13 @@ doxi/
    npm run dev:frontend
    ```
 
-7. **Seed Sample Data (Optional)**
-   ```bash
-   npm run seed
-   ```
+7. **Admin Account Setup**
+   The admin account is automatically created on first server startup using environment variables.
+   Default credentials:
+   - Email: admin@doxi.com
+   - Password: admin123
+   
+   ⚠️ **Important**: Change the default admin password after first login!
 
 8. **Access the Application**
    - Frontend: http://localhost:5173

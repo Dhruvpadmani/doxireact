@@ -118,30 +118,6 @@ export default function Register() {
                     </div>
                   </div>
                 </div>
-                <div 
-                  className={`border-2 rounded-lg p-4 text-center cursor-pointer transition-all duration-200 ${
-                    selectedRole === 'admin' 
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900' 
-                      : 'border-gray-200 dark:border-gray-600 hover:border-primary-300'
-                  }`}
-                  onClick={() => handleRoleSelect('admin')}
-                >
-                  <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mb-2">
-                      <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div className={`text-sm font-medium ${
-                      selectedRole === 'admin' 
-                        ? 'text-primary-700 dark:text-primary-300' 
-                        : 'text-gray-700 dark:text-gray-300'
-                    }`}>
-                      Admin
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Manage system
-                    </div>
-                  </div>
-                </div>
               </div>
               <input
                 {...register('role', { required: 'Please select a role' })}

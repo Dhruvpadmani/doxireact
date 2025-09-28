@@ -16,10 +16,13 @@ import {
   Shield,
   FileImage,
   FileCheck,
-  FileX
+  FileX,
+  Upload,
+  X,
+  Save
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { doctorAPI } from '../../services/api'
+import { doctorAPI, reportsAPI } from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 // No demo data - using real API data only
@@ -33,10 +36,25 @@ export default function DoctorReports() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [selectedReport, setSelectedReport] = useState(null)
   const [showReportDetails, setShowReportDetails] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [patients, setPatients] = useState([])
+  const [uploadForm, setUploadForm] = useState({
+    patientId: '',
+    type: '',
+    title: '',
+    description: '',
+    testDate: '',
+    reportDate: '',
+    files: [],
+    recommendations: '',
+    followUpRequired: false,
+    followUpDate: ''
+  })
   const { user } = useAuth()
 
   useEffect(() => {
     fetchReports()
+    fetchPatients()
   }, [])
 
   useEffect(() => {
@@ -59,6 +77,71 @@ export default function DoctorReports() {
       console.error('Failed to fetch reports:', error)
       // No fallback - show empty state
       setReports([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchPatients = async () => {
+    try {
+      const response = await doctorAPI.getPatients()
+      if (response.data && response.data.patients) {
+        setPatients(response.data.patients)
+      }
+    } catch (error) {
+      console.error('Failed to fetch patients:', error)
+      setPatients([])
+    }
+  }
+
+  const handleUpload = async (e) => {
+    e.preventDefault()
+    if (!uploadForm.patientId || !uploadForm.type || !uploadForm.title || !uploadForm.testDate || !uploadForm.reportDate) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const reportData = {
+        patientId: uploadForm.patientId,
+        type: uploadForm.type,
+        title: uploadForm.title,
+        description: uploadForm.description,
+        testDate: uploadForm.testDate,
+        reportDate: uploadForm.reportDate,
+        files: uploadForm.files.map(file => ({
+          name: file.name,
+          type: file.type || 'pdf',
+          size: file.size || 0
+        })),
+        recommendations: uploadForm.recommendations,
+        followUpRequired: uploadForm.followUpRequired,
+        followUpDate: uploadForm.followUpDate || undefined
+      }
+
+      await reportsAPI.create(reportData)
+      
+      setShowUploadModal(false)
+      setUploadForm({
+        patientId: '',
+        type: '',
+        title: '',
+        description: '',
+        testDate: '',
+        reportDate: '',
+        files: [],
+        recommendations: '',
+        followUpRequired: false,
+        followUpDate: ''
+      })
+      
+      // Refresh reports
+      fetchReports()
+      alert('Report uploaded successfully!')
+    } catch (error) {
+      console.error('Upload failed:', error)
+      alert('Upload failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -142,7 +225,10 @@ export default function DoctorReports() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Medical Reports</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">View and manage patient medical reports</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+          <button 
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
             <Plus className="h-4 w-4" />
             Add Report
           </button>
@@ -550,6 +636,218 @@ export default function DoctorReports() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Report Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Upload Medical Report</h3>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleUpload} className="p-6">
+              <div className="space-y-6">
+                {/* Patient Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Patient *
+                  </label>
+                  <select
+                    value={uploadForm.patientId}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, patientId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  >
+                    <option value="">Select a patient...</option>
+                    {patients.map((patient) => (
+                      <option key={patient._id} value={patient._id}>
+                        {patient.userId?.profile?.firstName} {patient.userId?.profile?.lastName} - {patient.patientId}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Report Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Report Type *
+                  </label>
+                  <select
+                    value={uploadForm.type}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  >
+                    <option value="">Select report type...</option>
+                    <option value="lab">Lab Report</option>
+                    <option value="imaging">Imaging Report</option>
+                    <option value="pathology">Pathology Report</option>
+                    <option value="radiology">Radiology Report</option>
+                    <option value="blood_test">Blood Test</option>
+                    <option value="urine_test">Urine Test</option>
+                    <option value="xray">X-Ray</option>
+                    <option value="mri">MRI</option>
+                    <option value="ct_scan">CT Scan</option>
+                    <option value="ultrasound">Ultrasound</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {/* Report Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Report Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadForm.title}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter report title..."
+                    required
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={uploadForm.description}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter report description..."
+                  />
+                </div>
+
+                {/* Test Date and Report Date */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Test Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={uploadForm.testDate}
+                      onChange={(e) => setUploadForm(prev => ({ ...prev, testDate: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Report Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={uploadForm.reportDate}
+                      onChange={(e) => setUploadForm(prev => ({ ...prev, reportDate: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Upload Files */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Upload Files
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('file-input').click()}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Choose Files
+                    </button>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {uploadForm.files.length > 0 ? `${uploadForm.files.length} file(s) selected` : 'No files chosen'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Supported formats: PDF, JPG, PNG (Max 10MB each)
+                  </p>
+                  <input
+                    id="file-input"
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, files: Array.from(e.target.files) }))}
+                  />
+                </div>
+
+                {/* Recommendations */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Doctor's Recommendations
+                  </label>
+                  <textarea
+                    value={uploadForm.recommendations}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, recommendations: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter your recommendations..."
+                  />
+                </div>
+
+                {/* Follow-up Required */}
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={uploadForm.followUpRequired}
+                      onChange={(e) => setUploadForm(prev => ({ ...prev, followUpRequired: e.target.checked }))}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Follow-up Required
+                    </span>
+                  </label>
+                  {uploadForm.followUpRequired && (
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Follow-up Date
+                      </label>
+                      <input
+                        type="date"
+                        value={uploadForm.followUpDate}
+                        onChange={(e) => setUploadForm(prev => ({ ...prev, followUpDate: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(false)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload Report
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

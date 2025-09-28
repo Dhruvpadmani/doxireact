@@ -146,36 +146,39 @@ export function AuthProvider({ children }) {
       
       return { success: true }
     } catch (error) {
-      // If backend is not available, check for demo accounts
-      console.log('Backend not available, checking demo accounts')
+      console.error('Login error:', error)
       
-      // Check if this is a demo account
-      const demoAccounts = JSON.parse(localStorage.getItem('demoAccounts') || '[]')
-      const demoUser = demoAccounts.find(account => account.email === email && account.password === password)
-      
-      if (demoUser) {
-        localStorage.setItem('user', JSON.stringify(demoUser))
-        dispatch({
-          type: 'AUTH_SUCCESS',
-          payload: { user: demoUser }
-        })
+      // Check if this is a demo account (only if backend is completely unavailable)
+      if (!error.response) {
+        console.log('Backend not available, checking demo accounts')
+        const demoAccounts = JSON.parse(localStorage.getItem('demoAccounts') || '[]')
+        const demoUser = demoAccounts.find(account => account.email === email && account.password === password)
         
-        toast.success('Demo login successful!')
-        
-        // Redirect based on user role
-        if (demoUser.role === 'admin') {
-          navigate('/admin')
-        } else if (demoUser.role === 'doctor') {
-          navigate('/doctor')
-        } else if (demoUser.role === 'patient') {
-          navigate('/patient')
-        } else {
-          navigate('/dashboard')
+        if (demoUser) {
+          localStorage.setItem('user', JSON.stringify(demoUser))
+          dispatch({
+            type: 'AUTH_SUCCESS',
+            payload: { user: demoUser }
+          })
+          
+          toast.success('Demo login successful!')
+          
+          // Redirect based on user role
+          if (demoUser.role === 'admin') {
+            navigate('/admin')
+          } else if (demoUser.role === 'doctor') {
+            navigate('/doctor')
+          } else if (demoUser.role === 'patient') {
+            navigate('/patient')
+          } else {
+            navigate('/dashboard')
+          }
+          
+          return { success: true }
         }
-        
-        return { success: true }
       }
       
+      // Handle backend errors properly
       const message = error.response?.data?.message || 'Login failed'
       dispatch({
         type: 'AUTH_FAILURE',
@@ -201,9 +204,7 @@ export function AuthProvider({ children }) {
       toast.success('Registration successful!')
       
       // Redirect based on user role
-      if (user.role === 'admin') {
-        navigate('/admin')
-      } else if (user.role === 'doctor') {
+      if (user.role === 'doctor') {
         navigate('/doctor')
       } else if (user.role === 'patient') {
         navigate('/patient')
@@ -270,9 +271,7 @@ export function AuthProvider({ children }) {
       toast.success('Demo account created successfully!')
       
       // Redirect based on user role
-      if (demoUser.role === 'admin') {
-        navigate('/admin')
-      } else if (demoUser.role === 'doctor') {
+      if (demoUser.role === 'doctor') {
         navigate('/doctor')
       } else if (demoUser.role === 'patient') {
         navigate('/patient')
