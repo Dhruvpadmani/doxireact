@@ -2,8 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Prescription = require('../models/Prescription');
 const Appointment = require('../models/Appointment');
-const Doctor = require('../models/Doctor');
-const Patient = require('../models/Patient');
+const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
@@ -47,8 +46,8 @@ router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
 
     // Get appointment
     const appointment = await Appointment.findById(appointmentId)
-      .populate('patientId')
-      .populate('doctorId');
+        .populate('patientId', 'patientData.patientId')
+        .populate('doctorId', 'doctorData.specialization');
 
     if (!appointment) {
       return res.status(404).json({
@@ -59,8 +58,7 @@ router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
 
     // Check if user has permission to create prescription for this appointment
     if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor || appointment.doctorId._id.toString() !== doctor._id.toString()) {
+        if (appointment.doctorId._id.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'
@@ -99,10 +97,10 @@ router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
 
     // Create notification for patient
     const notification = new Notification({
-      userId: appointment.patientId.userId,
+        userId: appointment.patientId._id,
       type: 'prescription',
       title: 'New Prescription Available',
-      message: `Your prescription from Dr. ${appointment.doctorId.specialization} is ready`,
+        message: `Your prescription from Dr. ${appointment.doctorId.doctorData.specialization} is ready`,
       data: {
         prescriptionId: prescription._id,
         appointmentId: appointment._id,
@@ -140,23 +138,23 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // Apply role-based filtering
     if (req.user.role === 'patient') {
-      const patient = await Patient.findOne({ userId: req.user._id });
-      if (!patient) {
+        if (req.user._id) {
+            query.patientId = req.user._id;
+        } else {
         return res.status(404).json({
           message: 'Patient profile not found',
           code: 'PATIENT_NOT_FOUND'
         });
       }
-      query.patientId = patient._id;
     } else if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor) {
+        if (req.user._id) {
+            query.doctorId = req.user._id;
+        } else {
         return res.status(404).json({
           message: 'Doctor profile not found',
           code: 'DOCTOR_NOT_FOUND'
         });
       }
-      query.doctorId = doctor._id;
     }
 
     // Additional filters
@@ -165,8 +163,8 @@ router.get('/', authenticateToken, async (req, res) => {
     if (status) query.status = status;
 
     const prescriptions = await Prescription.find(query)
-      .populate('patientId', 'patientId')
-      .populate('doctorId', 'doctorId specialization')
+        .populate('patientId', 'patientData.patientId')
+        .populate('doctorId', 'doctorData.doctorId doctorData.specialization')
       .populate('appointmentId', 'appointmentId appointmentDate')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
@@ -195,8 +193,8 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const prescription = await Prescription.findById(req.params.id)
-      .populate('patientId', 'patientId')
-      .populate('doctorId', 'doctorId specialization')
+        .populate('patientId', 'patientData.patientId')
+        .populate('doctorId', 'doctorData.doctorId doctorData.specialization')
       .populate('appointmentId', 'appointmentId appointmentDate');
 
     if (!prescription) {
@@ -212,11 +210,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
     if (req.user.role === 'admin') {
       hasAccess = true;
     } else if (req.user.role === 'patient') {
-      const patient = await Patient.findOne({ userId: req.user._id });
-      hasAccess = patient && prescription.patientId._id.toString() === patient._id.toString();
+        hasAccess = prescription.patientId._id.toString() === req.user._id.toString();
     } else if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      hasAccess = doctor && prescription.doctorId._id.toString() === doctor._id.toString();
+        hasAccess = prescription.doctorId._id.toString() === req.user._id.toString();
     }
 
     if (!hasAccess) {
@@ -270,8 +266,7 @@ router.put('/:id', authenticateToken, authorizeRole('doctor', 'admin'), [
 
     // Check if user has permission to update this prescription
     if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor || prescription.doctorId.toString() !== doctor._id.toString()) {
+        if (prescription.doctorId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'
@@ -349,8 +344,7 @@ router.post('/:id/refill', authenticateToken, authorizeRole('patient', 'admin'),
 
     // Check if user has access to this prescription
     if (req.user.role === 'patient') {
-      const patient = await Patient.findOne({ userId: req.user._id });
-      if (!patient || prescription.patientId.toString() !== patient._id.toString()) {
+        if (prescription.patientId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'
@@ -406,8 +400,7 @@ router.delete('/:id', authenticateToken, authorizeRole('doctor', 'admin'), async
 
     // Check if user has permission to delete this prescription
     if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor || prescription.doctorId.toString() !== doctor._id.toString()) {
+        if (prescription.doctorId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'

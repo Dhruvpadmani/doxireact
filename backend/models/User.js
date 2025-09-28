@@ -124,6 +124,45 @@ userSchema.virtual('fullName').get(function() {
   return `${this.profile.firstName} ${this.profile.lastName}`;
 });
 
+// Calculate average doctor rating
+userSchema.methods.updateDoctorRating = async function () {
+    const Review = mongoose.model('Review');
+    const stats = await Review.aggregate([
+        {$match: {doctorId: this._id, status: 'approved'}},
+        {
+            $group: {
+                _id: null,
+                averageRating: {$avg: '$rating'},
+                totalReviews: {$sum: 1}
+            }
+        }
+    ]);
+
+    if (stats.length > 0) {
+        this.doctorData.rating.average = Math.round(stats[0].averageRating * 10) / 10;
+        this.doctorData.rating.count = stats[0].totalReviews;
+    } else {
+        this.doctorData.rating.average = 0;
+        this.doctorData.rating.count = 0;
+    }
+
+    await this.save();
+};
+
+// Generate patient/doctor ID before saving
+userSchema.pre('validate', async function (next) {
+    if (this.isNew) {
+        if (this.role === 'patient' && !this.patientData.patientId) {
+            const count = await mongoose.model('User').countDocuments({role: 'patient'});
+            this.patientData.patientId = `PAT${String(count + 1).padStart(6, '0')}`;
+        } else if (this.role === 'doctor' && !this.doctorData.doctorId) {
+            const count = await mongoose.model('User').countDocuments({role: 'doctor'});
+            this.doctorData.doctorId = `DOC${String(count + 1).padStart(6, '0')}`;
+        }
+    }
+    next();
+});
+
 // Ensure virtual fields are serialized
 userSchema.set('toJSON', {
   virtuals: true,

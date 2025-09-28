@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { Eye, EyeOff, Mail, Lock, User, Phone, Calendar, Stethoscope } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
-import { useTheme } from '../contexts/ThemeContext'
+import {useState} from 'react'
+import {Link, useNavigate} from 'react-router-dom'
+import {useForm} from 'react-hook-form'
+import {Calendar, Eye, EyeOff, Lock, Mail, Phone, Stethoscope, User} from 'lucide-react'
+import {useAuth} from '../contexts/AuthContext'
+import {useTheme} from '../contexts/ThemeContext'
 import LoadingSpinner from '../components/LoadingSpinner'
+import toast from 'react-hot-toast'
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
@@ -25,6 +26,21 @@ export default function Register() {
 
   const password = watch('password')
 
+  // Helper function to get input class based on validation state
+  const getInputClass = (fieldName, nestedField = null) => {
+    let hasError = false;
+
+    if (nestedField) {
+      hasError = errors[fieldName]?.[nestedField];
+    } else {
+      hasError = errors[fieldName];
+    }
+
+    return hasError
+        ? "input pl-10 border-red-500 focus:ring-red-500 focus:border-red-500"
+        : "input pl-10";
+  };
+
   const handleRoleSelect = (role) => {
     setSelectedRole(role)
     setValue('role', role)
@@ -32,8 +48,31 @@ export default function Register() {
 
   const onSubmit = async (data) => {
     setIsLoading(true)
-    const result = await registerUser(data)
-    setIsLoading(false)
+    try {
+      const result = await registerUser(data)
+      if (!result.success) {
+        // Error handled by AuthContext, but we can show additional UI feedback if needed
+        console.error('Registration failed:', result.error)
+
+        // Show specific error messages based on error type
+        if (result.type === 'validation') {
+          toast.error('Please fix the validation issues and try again.', {
+            duration: 8000,
+            icon: '⚠️'
+          })
+        } else if (result.type === 'backend') {
+          toast.error('Registration failed due to a server error. Please try again later.', {
+            duration: 6000,
+            icon: '🔧'
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Unexpected error during registration:', error)
+      toast.error('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
     
     // Navigation is handled inside the register function in AuthContext
   }
@@ -148,7 +187,7 @@ export default function Register() {
                       }
                     })}
                     type="text"
-                    className="input pl-10"
+                    className={getInputClass('profile', 'firstName')}
                     placeholder="First name"
                     maxLength={50}
                   />
@@ -174,7 +213,7 @@ export default function Register() {
                       }
                     })}
                     type="text"
-                    className="input pl-10"
+                    className={getInputClass('profile', 'lastName')}
                     placeholder="Last name"
                     maxLength={50}
                   />
@@ -203,7 +242,7 @@ export default function Register() {
                     }
                   })}
                   type="email"
-                  className="input pl-10"
+                  className={getInputClass('email')}
                   placeholder="Enter your email"
                 />
               </div>

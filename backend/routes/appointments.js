@@ -1,8 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Appointment = require('../models/Appointment');
-const Doctor = require('../models/Doctor');
-const Patient = require('../models/Patient');
+const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
@@ -38,8 +37,8 @@ router.post('/book', authenticateToken, authorizeRole('patient'), [
     } = req.body;
 
     // Get patient
-    const patient = await Patient.findOne({ userId: req.user._id });
-    if (!patient) {
+      const patient = await User.findById(req.user._id);
+      if (!patient || patient.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
@@ -47,8 +46,8 @@ router.post('/book', authenticateToken, authorizeRole('patient'), [
     }
 
     // Check if doctor exists and is verified
-    const doctor = await Doctor.findById(doctorId);
-    if (!doctor || !doctor.isVerified) {
+      const doctor = await User.findById(doctorId);
+      if (!doctor || doctor.role !== 'doctor' || !doctor.doctorData.isVerified) {
       return res.status(404).json({
         message: 'Doctor not found or not verified',
         code: 'DOCTOR_NOT_FOUND'
@@ -90,7 +89,7 @@ router.post('/book', authenticateToken, authorizeRole('patient'), [
       reason,
       symptoms: symptoms || [],
       payment: {
-        amount: doctor.consultationFee
+          amount: doctor.doctorData.consultationFee
       }
     });
 
@@ -99,7 +98,7 @@ router.post('/book', authenticateToken, authorizeRole('patient'), [
     // Create notifications
     const notifications = [
       {
-        userId: doctor.userId,
+          userId: doctor._id,
         type: 'appointment',
         title: 'New Appointment Booked',
         message: `New appointment with ${req.user.profile.firstName} ${req.user.profile.lastName} on ${appointmentDate} at ${appointmentTime}`,
@@ -113,7 +112,7 @@ router.post('/book', authenticateToken, authorizeRole('patient'), [
         userId: req.user._id,
         type: 'appointment',
         title: 'Appointment Confirmed',
-        message: `Your appointment with Dr. ${doctor.specialization} is confirmed for ${appointmentDate} at ${appointmentTime}`,
+          message: `Your appointment with Dr. ${doctor.doctorData.specialization} is confirmed for ${appointmentDate} at ${appointmentTime}`,
         data: {
           appointmentId: appointment._id,
           doctorId: doctor._id,
@@ -160,8 +159,8 @@ router.get('/available-slots/:doctorId', [
       });
     }
 
-    const doctor = await Doctor.findById(doctorId);
-    if (!doctor || !doctor.isVerified) {
+      const doctor = await User.findById(doctorId);
+      if (!doctor || doctor.role !== 'doctor' || !doctor.doctorData.isVerified) {
       return res.status(404).json({
         message: 'Doctor not found or not verified',
         code: 'DOCTOR_NOT_FOUND'
@@ -172,7 +171,7 @@ router.get('/available-slots/:doctorId', [
     const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'lowercase' });
 
     // Get doctor's availability for the day
-    const dayAvailability = doctor.availability.find(
+      const dayAvailability = doctor.doctorData.availability.find(
       avail => avail.dayOfWeek === dayOfWeek && avail.isAvailable
     );
 
@@ -241,8 +240,8 @@ router.get('/available-slots/:doctorId', [
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id)
-      .populate('patientId', 'patientId')
-      .populate('doctorId', 'doctorId specialization');
+        .populate('patientId', 'patientData.patientId')
+        .populate('doctorId', 'doctorData.doctorId doctorData.specialization');
 
     if (!appointment) {
       return res.status(404).json({
@@ -254,8 +253,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     // Check if user has access to this appointment
     const hasAccess = 
       req.user.role === 'admin' ||
-      (req.user.role === 'doctor' && appointment.doctorId._id.toString() === req.user.doctorId) ||
-      (req.user.role === 'patient' && appointment.patientId._id.toString() === req.user.patientId);
+        (req.user.role === 'doctor' && appointment.doctorId.toString() === req.user._id.toString()) ||
+        (req.user.role === 'patient' && appointment.patientId.toString() === req.user._id.toString());
 
     if (!hasAccess) {
       return res.status(403).json({
@@ -304,8 +303,8 @@ router.put('/:id', authenticateToken, authorizeRole('doctor', 'admin'), [
 
     // Check if user has permission to update this appointment
     if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor || appointment.doctorId.toString() !== doctor._id.toString()) {
+        const doctor = await User.findById(req.user._id);
+        if (!doctor || doctor.role !== 'doctor' || appointment.doctorId.toString() !== doctor._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'
@@ -371,14 +370,14 @@ router.put('/:id/cancel', authenticateToken, [
       canCancel = true;
       cancelledBy = 'admin';
     } else if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (doctor && appointment.doctorId.toString() === doctor._id.toString()) {
+        const doctor = await User.findById(req.user._id);
+        if (doctor && doctor.role === 'doctor' && appointment.doctorId.toString() === doctor._id.toString()) {
         canCancel = true;
         cancelledBy = 'doctor';
       }
     } else if (req.user.role === 'patient') {
-      const patient = await Patient.findOne({ userId: req.user._id });
-      if (patient && appointment.patientId.toString() === patient._id.toString()) {
+        const patient = await User.findById(req.user._id);
+        if (patient && patient.role === 'patient' && appointment.patientId.toString() === patient._id.toString()) {
         canCancel = true;
         cancelledBy = 'patient';
       }

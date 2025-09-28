@@ -1,6 +1,6 @@
-import { createContext, useContext, useReducer, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { authAPI } from '../services/api'
+import {createContext, useContext, useEffect, useReducer} from 'react'
+import {useNavigate} from 'react-router-dom'
+import {authAPI} from '../services/api'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext()
@@ -219,72 +219,105 @@ export function AuthProvider({ children }) {
       
       return { success: true }
     } catch (error) {
-      // If backend is not available, create a demo account
-      console.log('Backend not available, creating demo account')
-      
-      const demoUser = {
-        id: Date.now().toString(),
-        email: userData.email,
-        role: userData.role,
-        profile: userData.profile,
-        isActive: true,
-        lastLogin: new Date(),
-        createdAt: new Date()
-      }
-      
-      // Save demo account for future logins
-      const demoAccounts = JSON.parse(localStorage.getItem('demoAccounts') || '[]')
-      demoAccounts.push({
-        ...demoUser,
-        password: userData.password // Store password for demo login
-      })
-      localStorage.setItem('demoAccounts', JSON.stringify(demoAccounts))
-      
-      // If doctor is registering, save to registeredDoctors for patient panel
-      if (userData.role === 'doctor') {
-        const doctorData = {
-          id: demoUser.id,
-          profile: userData.profile,
-          specialization: userData.profile.specialization || 'General Medicine',
-          experience: userData.profile.experience || 0,
-          consultationFee: userData.profile.consultationFee || 0,
-          licenseNumber: userData.profile.licenseNumber || '',
-          bio: userData.profile.bio || '',
-          languages: userData.profile.languages || ['English'],
-          rating: {
-            average: 0,
-            count: 0
-          },
-          isVerified: false,
-          createdAt: new Date().toISOString()
+      // Handle backend validation errors specifically
+      if (error.response && error.response.status === 400) {
+        const errorMessage = error.response.data?.message || 'Validation failed. Please check your input and try again.';
+        const validationErrors = error.response.data?.errors || {};
+
+        // Format validation errors for display
+        let detailedMessage = errorMessage;
+        if (Object.keys(validationErrors).length > 0) {
+          detailedMessage += '\n\nValidation Issues:\n';
+          Object.entries(validationErrors).forEach(([field, messages]) => {
+            detailedMessage += `- ${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}\n`;
+          });
         }
-        
-        const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]')
-        registeredDoctors.push(doctorData)
-        localStorage.setItem('registeredDoctors', JSON.stringify(registeredDoctors))
-        console.log('✅ Doctor saved to localStorage:', doctorData)
-        console.log('📋 Total registered doctors:', registeredDoctors.length)
+
+        dispatch({
+          type: 'AUTH_FAILURE',
+          payload: detailedMessage
+        });
+        toast.error(detailedMessage, {duration: 10000}); // Longer duration for detailed messages
+        return {success: false, error: detailedMessage, type: 'validation'};
       }
-      
-      // For demo registration, we still store user info but token is handled by cookie
-      localStorage.setItem('user', JSON.stringify(demoUser))
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: { user: demoUser }
-      })
-      
-      toast.success('Demo account created successfully!')
-      
-      // Redirect based on user role
-      if (demoUser.role === 'doctor') {
-        navigate('/doctor')
-      } else if (demoUser.role === 'patient') {
-        navigate('/patient')
-      } else {
-        navigate('/dashboard')
+      // Handle other backend errors
+      else if (error.response) {
+        const errorMessage = error.response.data?.message || 'Registration failed. Please check your information and try again.';
+        dispatch({
+          type: 'AUTH_FAILURE',
+          payload: errorMessage
+        });
+        toast.error(errorMessage);
+        return {success: false, error: errorMessage, type: 'backend'};
       }
-      
-      return { success: true }
+      // Handle network errors (offline mode)
+      else {
+        console.log('Network error detected, creating demo account for offline development');
+
+        const demoUser = {
+          id: Date.now().toString(),
+          email: userData.email,
+          role: userData.role,
+          profile: userData.profile,
+          isActive: true,
+          lastLogin: new Date(),
+          createdAt: new Date()
+        }
+
+        // Save demo account for future logins
+        const demoAccounts = JSON.parse(localStorage.getItem('demoAccounts') || '[]')
+        demoAccounts.push({
+          ...demoUser,
+          password: userData.password // Store password for demo login
+        })
+        localStorage.setItem('demoAccounts', JSON.stringify(demoAccounts))
+
+        // If doctor is registering, save to registeredDoctors for patient panel
+        if (userData.role === 'doctor') {
+          const doctorData = {
+            id: demoUser.id,
+            profile: userData.profile,
+            specialization: userData.profile.specialization || 'General Medicine',
+            experience: userData.profile.experience || 0,
+            consultationFee: userData.profile.consultationFee || 0,
+            licenseNumber: userData.profile.licenseNumber || '',
+            bio: userData.profile.bio || '',
+            languages: userData.profile.languages || ['English'],
+            rating: {
+              average: 0,
+              count: 0
+            },
+            isVerified: false,
+            createdAt: new Date().toISOString()
+          }
+
+          const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]')
+          registeredDoctors.push(doctorData)
+          localStorage.setItem('registeredDoctors', JSON.stringify(registeredDoctors))
+          console.log('✅ Doctor saved to localStorage:', doctorData)
+          console.log('📋 Total registered doctors:', registeredDoctors.length)
+        }
+
+        // For demo registration, we still store user info but token is handled by cookie
+        localStorage.setItem('user', JSON.stringify(demoUser))
+        dispatch({
+          type: 'AUTH_SUCCESS',
+          payload: {user: demoUser}
+        })
+
+        toast.success('Demo account created successfully!')
+
+        // Redirect based on user role
+        if (demoUser.role === 'doctor') {
+          navigate('/doctor')
+        } else if (demoUser.role === 'patient') {
+          navigate('/patient')
+        } else {
+          navigate('/dashboard')
+        }
+
+        return {success: true, type: 'demo'}
+      }
     }
   }
 

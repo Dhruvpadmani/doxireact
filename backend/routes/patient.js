@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const Patient = require('../models/Patient');
+const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
 const Prescription = require('../models/Prescription');
@@ -18,10 +18,9 @@ router.use(authorizeRole('patient'));
 // Get patient profile
 router.get('/profile', async (req, res) => {
   try {
-    const patient = await Patient.findOne({ userId: req.user._id })
-        .populate('userId', 'email profile');
+      const user = await User.findById(req.user._id);
 
-    if (!patient) {
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
@@ -29,7 +28,20 @@ router.get('/profile', async (req, res) => {
     }
 
     res.json({
-      patient
+        patient: {
+            patientId: user.patientData.patientId,
+            emergencyContact: user.patientData.emergencyContact,
+            medicalHistory: user.patientData.medicalHistory,
+            allergies: user.patientData.allergies,
+            medications: user.patientData.medications,
+            insurance: user.patientData.insurance,
+            preferences: user.patientData.preferences,
+            user: {
+                id: user._id,
+                email: user.email,
+                profile: user.profile
+            }
+        }
     });
   } catch (error) {
     console.error('Get patient profile error:', error);
@@ -74,8 +86,8 @@ router.put('/profile', [
       });
     }
 
-    const patient = await Patient.findOne({ userId: req.user._id });
-    if (!patient) {
+      const user = await User.findById(req.user._id);
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
@@ -94,34 +106,47 @@ router.put('/profile', [
     if (emergencyContact) {
       Object.keys(emergencyContact).forEach(key => {
         if (emergencyContact[key] !== undefined) {
-          patient.emergencyContact[key] = emergencyContact[key];
+            user.patientData.emergencyContact[key] = emergencyContact[key];
         }
       });
     }
 
-    if (medicalHistory) patient.medicalHistory = medicalHistory;
-    if (allergies) patient.allergies = allergies;
-    if (medications) patient.medications = medications;
+      if (medicalHistory) user.patientData.medicalHistory = medicalHistory;
+      if (allergies) user.patientData.allergies = allergies;
+      if (medications) user.patientData.medications = medications;
     if (insurance) {
       Object.keys(insurance).forEach(key => {
         if (insurance[key] !== undefined) {
-          patient.insurance[key] = insurance[key];
+            user.patientData.insurance[key] = insurance[key];
         }
       });
     }
     if (preferences) {
       Object.keys(preferences).forEach(key => {
         if (preferences[key] !== undefined) {
-          patient.preferences[key] = preferences[key];
+            user.patientData.preferences[key] = preferences[key];
         }
       });
     }
 
-    await patient.save();
+      await user.save();
 
     res.json({
       message: 'Patient profile updated successfully',
-      patient
+        patient: {
+            patientId: user.patientData.patientId,
+            emergencyContact: user.patientData.emergencyContact,
+            medicalHistory: user.patientData.medicalHistory,
+            allergies: user.patientData.allergies,
+            medications: user.patientData.medications,
+            insurance: user.patientData.insurance,
+            preferences: user.patientData.preferences,
+            user: {
+                id: user._id,
+                email: user.email,
+                profile: user.profile
+            }
+        }
     });
   } catch (error) {
     console.error('Update patient profile error:', error);
@@ -135,13 +160,15 @@ router.put('/profile', [
 // Dashboard statistics
 router.get('/dashboard', async (req, res) => {
   try {
-    const patient = await Patient.findOne({ userId: req.user._id });
-    if (!patient) {
+      const user = await User.findById(req.user._id);
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
       });
     }
+
+      const patientId = user._id; // In the new structure, the user ID is the patient ID
 
     const [
       totalAppointments,
@@ -154,25 +181,25 @@ router.get('/dashboard', async (req, res) => {
       recentPrescriptions,
       recentReports
     ] = await Promise.all([
-      Appointment.countDocuments({ patientId: patient._id }),
+        Appointment.countDocuments({patientId: patientId}),
       Appointment.countDocuments({
-        patientId: patient._id,
+          patientId: patientId,
         appointmentDate: { $gte: new Date() },
         status: { $in: ['scheduled', 'confirmed'] }
       }),
-      Appointment.countDocuments({ patientId: patient._id, status: 'completed' }),
-      Prescription.countDocuments({ patientId: patient._id }),
-      Report.countDocuments({ patientId: patient._id }),
-      Review.countDocuments({ patientId: patient._id }),
-      Appointment.find({ patientId: patient._id })
+        Appointment.countDocuments({patientId: patientId, status: 'completed'}),
+        Prescription.countDocuments({patientId: patientId}),
+        Report.countDocuments({patientId: patientId}),
+        Review.countDocuments({patientId: patientId}),
+        Appointment.find({patientId: patientId})
           .populate('doctorId', 'doctorId specialization')
           .sort({appointmentDate: -1})
           .limit(5),
-      Prescription.find({ patientId: patient._id })
+        Prescription.find({patientId: patientId})
           .populate('doctorId', 'doctorId specialization')
           .sort({createdAt: -1})
           .limit(5),
-      Report.find({ patientId: patient._id })
+        Report.find({patientId: patientId})
           .populate('doctorId', 'doctorId specialization')
           .sort({createdAt: -1})
           .limit(5)
@@ -281,16 +308,16 @@ router.get('/doctors/:id', async (req, res) => {
 router.get('/appointments', async (req, res) => {
   try {
     const { page = 1, limit = 10, status, date, doctorId } = req.query;
-    const patient = await Patient.findOne({ userId: req.user._id });
+      const user = await User.findById(req.user._id);
 
-    if (!patient) {
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
       });
     }
 
-    const query = { patientId: patient._id };
+      const query = {patientId: user._id};
 
     if (status) query.status = status;
     if (doctorId) query.doctorId = doctorId;
@@ -329,8 +356,8 @@ router.get('/appointments', async (req, res) => {
 // Get single appointment
 router.get('/appointments/:id', async (req, res) => {
   try {
-    const patient = await Patient.findOne({ userId: req.user._id });
-    if (!patient) {
+      const user = await User.findById(req.user._id);
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
@@ -339,7 +366,7 @@ router.get('/appointments/:id', async (req, res) => {
 
     const appointment = await Appointment.findOne({
       _id: req.params.id,
-      patientId: patient._id
+        patientId: user._id
     })
         .populate('doctorId', 'doctorId specialization')
         .populate('prescription');
@@ -377,9 +404,9 @@ router.put('/appointments/:id/cancel', [
     }
 
     const { reason } = req.body;
-    const patient = await Patient.findOne({ userId: req.user._id });
+      const user = await User.findById(req.user._id);
 
-    if (!patient) {
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
@@ -388,7 +415,7 @@ router.put('/appointments/:id/cancel', [
 
     const appointment = await Appointment.findOne({
       _id: req.params.id,
-      patientId: patient._id
+        patientId: user._id
     });
 
     if (!appointment) {
@@ -435,16 +462,16 @@ router.put('/appointments/:id/cancel', [
 router.get('/prescriptions', async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
-    const patient = await Patient.findOne({ userId: req.user._id });
+      const user = await User.findById(req.user._id);
 
-    if (!patient) {
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
       });
     }
 
-    const query = { patientId: patient._id };
+      const query = {patientId: user._id};
     if (status) query.status = status;
 
     const prescriptions = await Prescription.find(query)
@@ -477,16 +504,16 @@ router.get('/prescriptions', async (req, res) => {
 router.get('/reports', async (req, res) => {
   try {
     const { page = 1, limit = 10, type, status } = req.query;
-    const patient = await Patient.findOne({ userId: req.user._id });
+      const user = await User.findById(req.user._id);
 
-    if (!patient) {
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
       });
     }
 
-    const query = { patientId: patient._id };
+      const query = {patientId: user._id};
     if (type) query.type = type;
     if (status) query.status = status;
 
@@ -518,9 +545,9 @@ router.get('/reports', async (req, res) => {
 // Get medical history
 router.get('/medical-history', authenticateToken, async (req, res) => {
   try {
-    const patient = await Patient.findOne({ userId: req.user._id });
+      const user = await User.findById(req.user._id);
 
-    if (!patient) {
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
@@ -529,21 +556,21 @@ router.get('/medical-history', authenticateToken, async (req, res) => {
 
     // Get all appointments, prescriptions, and reports
     const [appointments, prescriptions, reports] = await Promise.all([
-      Appointment.find({ patientId: patient._id })
+        Appointment.find({patientId: user._id})
           .populate('doctorId', 'doctorId specialization')
           .sort({appointmentDate: -1}),
-      Prescription.find({ patientId: patient._id })
+        Prescription.find({patientId: user._id})
           .populate('doctorId', 'doctorId specialization')
           .sort({createdAt: -1}),
-      Report.find({ patientId: patient._id })
+        Report.find({patientId: user._id})
           .populate('doctorId', 'doctorId specialization')
           .sort({createdAt: -1})
     ]);
 
     res.json({
-      medicalHistory: patient.medicalHistory,
-      allergies: patient.allergies,
-      medications: patient.medications,
+        medicalHistory: user.patientData.medicalHistory,
+        allergies: user.patientData.allergies,
+        medications: user.patientData.medications,
       appointments,
       prescriptions,
       reports
@@ -575,9 +602,9 @@ router.post('/emergency', [
     }
 
     const { type, description, symptoms, priority } = req.body;
-    const patient = await Patient.findOne({ userId: req.user._id });
+      const user = await User.findById(req.user._id);
 
-    if (!patient) {
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
@@ -585,14 +612,14 @@ router.post('/emergency', [
     }
 
     const emergencyRequest = new EmergencyRequest({
-      patientId: patient._id,
+        patientId: user._id,
       type,
       description,
       symptoms: symptoms || [],
       priority: priority || 'high',
       contactInfo: {
         phone: req.user.profile.phone,
-        emergencyContact: patient.emergencyContact.phone
+          emergencyContact: user.patientData.emergencyContact.phone
       }
     });
 
@@ -621,16 +648,16 @@ router.post('/emergency', [
 router.get('/emergency-requests', async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
-    const patient = await Patient.findOne({ userId: req.user._id });
+      const user = await User.findById(req.user._id);
 
-    if (!patient) {
+      if (!user || user.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient profile not found',
         code: 'PATIENT_NOT_FOUND'
       });
     }
 
-    const query = { patientId: patient._id };
+      const query = {patientId: user._id};
     if (status) query.status = status;
 
     const requests = await EmergencyRequest.find(query)

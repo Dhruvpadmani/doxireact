@@ -1,8 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-const Patient = require('../models/Patient');
-const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
 const Prescription = require('../models/Prescription');
 const Report = require('../models/Report');
@@ -36,8 +34,8 @@ router.get('/dashboard', async (req, res) => {
       recentUsers
     ] = await Promise.all([
       User.countDocuments(),
-      Patient.countDocuments(),
-      Doctor.countDocuments(),
+      User.countDocuments({role: 'patient'}),
+      User.countDocuments({role: 'doctor'}),
       Appointment.countDocuments(),
       Appointment.countDocuments({ status: 'scheduled' }),
       Appointment.countDocuments({ status: 'completed' }),
@@ -46,8 +44,8 @@ router.get('/dashboard', async (req, res) => {
       Review.countDocuments(),
       EmergencyRequest.countDocuments({ status: 'pending' }),
       Appointment.find()
-        .populate('patientId', 'patientId')
-        .populate('doctorId', 'doctorId')
+          .populate('patientId', 'patientData.patientId')
+          .populate('doctorId', 'doctorData.doctorId')
         .sort({ createdAt: -1 })
         .limit(5),
       User.find()
@@ -157,12 +155,12 @@ router.get('/users/:id', async (req, res) => {
       });
     }
 
-    // Get role-specific data
+    // Get role-specific data from the same user document
     let roleData = null;
     if (user.role === 'patient') {
-      roleData = await Patient.findOne({ userId: user._id });
+      roleData = user.patientData;
     } else if (user.role === 'doctor') {
-      roleData = await Doctor.findOne({ userId: user._id });
+      roleData = user.doctorData;
     }
 
     res.json({
@@ -236,24 +234,26 @@ router.put('/users/:id/status', [
 router.get('/doctors', async (req, res) => {
   try {
     const { page = 1, limit = 10, specialization, isVerified, search } = req.query;
-    const query = {};
+    const query = {role: 'doctor'};
 
-    if (specialization) query.specialization = specialization;
-    if (isVerified !== undefined) query.isVerified = isVerified === 'true';
+    if (specialization) query['doctorData.specialization'] = specialization;
+    if (isVerified !== undefined) query['doctorData.isVerified'] = isVerified === 'true';
     if (search) {
       query.$or = [
-        { licenseNumber: { $regex: search, $options: 'i' } },
-        { specialization: { $regex: search, $options: 'i' } }
+        {'doctorData.licenseNumber': {$regex: search, $options: 'i'}},
+        {'doctorData.specialization': {$regex: search, $options: 'i'}},
+        {'profile.firstName': {$regex: search, $options: 'i'}},
+        {'profile.lastName': {$regex: search, $options: 'i'}}
       ];
     }
 
-    const doctors = await Doctor.find(query)
-      .populate('userId', 'email profile isActive')
+    const doctors = await User.find(query)
+        .select('email profile isActive doctorData')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    const total = await Doctor.countDocuments(query);
+    const total = await User.countDocuments(query);
 
     res.json({
       doctors,
@@ -286,24 +286,25 @@ router.put('/doctors/:id/verify', [
     }
 
     const { isVerified } = req.body;
-    const doctor = await Doctor.findById(req.params.id);
+    const user = await User.findById(req.params.id);
 
-    if (!doctor) {
+    if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
 
-    doctor.isVerified = isVerified;
-    await doctor.save();
+    const oldIsVerified = user.doctorData.isVerified;
+    user.doctorData.isVerified = isVerified;
+    await user.save();
 
     // Log admin action
     await AdminLog.logAction(req.user._id, isVerified ? 'doctor_verified' : 'doctor_unverified', {
       targetType: 'doctor',
-      targetId: doctor._id,
+      targetId: user._id,
       details: {
-        before: { isVerified: !isVerified },
+        before: {isVerified: oldIsVerified},
         after: { isVerified },
         changes: [`Verification status changed to ${isVerified ? 'verified' : 'unverified'}`]
       }
@@ -312,9 +313,9 @@ router.put('/doctors/:id/verify', [
     res.json({
       message: `Doctor ${isVerified ? 'verified' : 'unverified'} successfully`,
       doctor: {
-        id: doctor._id,
-        doctorId: doctor.doctorId,
-        isVerified: doctor.isVerified
+        id: user._id,
+        doctorId: user.doctorData.doctorId,
+        isVerified: user.doctorData.isVerified
       }
     });
   } catch (error) {
@@ -343,8 +344,8 @@ router.get('/appointments', async (req, res) => {
     }
 
     const appointments = await Appointment.find(query)
-      .populate('patientId', 'patientId')
-      .populate('doctorId', 'doctorId')
+        .populate('patientId', 'patientData.patientId')
+        .populate('doctorId', 'doctorData.doctorId')
       .sort({ appointmentDate: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -438,8 +439,8 @@ router.get('/reviews', async (req, res) => {
     if (rating) query.rating = parseInt(rating);
 
     const reviews = await Review.find(query)
-      .populate('patientId', 'patientId')
-      .populate('doctorId', 'doctorId')
+        .populate('patientId', 'patientData.patientId')
+        .populate('doctorId', 'doctorData.doctorId')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -536,8 +537,8 @@ router.get('/emergency-requests', async (req, res) => {
     if (priority) query.priority = priority;
 
     const requests = await EmergencyRequest.find(query)
-      .populate('patientId', 'patientId')
-      .populate('assignedTo.doctorId', 'doctorId')
+        .populate('patientId', 'patientData.patientId')
+        .populate('assignedTo.doctorId', 'doctorData.doctorId')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);

@@ -2,8 +2,6 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-const Patient = require('../models/Patient');
-const Doctor = require('../models/Doctor');
 const { authenticateToken, authRateLimit } = require('../middleware/auth');
 
 const router = express.Router();
@@ -56,37 +54,34 @@ router.post('/register', [
       });
     }
 
-    // Create user
-    const user = new User({
+      // Create user with role-specific data
+      const userData = {
       email,
       password,
       role,
       profile
-    });
+      };
 
-    await user.save();
-
-    // Create role-specific profile
+      // Add role-specific data
     if (role === 'patient') {
-      const patient = new Patient({
-        userId: user._id,
+        userData.patientData = {
         emergencyContact: {
           name: profile.emergencyContact?.name || '',
           relationship: profile.emergencyContact?.relationship || '',
           phone: profile.emergencyContact?.phone || ''
         }
-      });
-      await patient.save();
+        };
     } else if (role === 'doctor') {
-      const doctor = new Doctor({
-        userId: user._id,
+        userData.doctorData = {
         licenseNumber: profile.licenseNumber || '',
         specialization: profile.specialization || '',
         experience: profile.experience || 0,
         consultationFee: profile.consultationFee || 0
-      });
-      await doctor.save();
+        };
     }
+
+      const user = new User(userData);
+      await user.save();
 
     // Generate token
     const token = generateToken(user._id);
@@ -189,13 +184,13 @@ router.post('/login', [
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = req.user;
-    
-    // Get role-specific data
+
+      // Get role-specific data from the same user document
     let roleData = null;
     if (user.role === 'patient') {
-      roleData = await Patient.findOne({ userId: user._id });
+        roleData = user.patientData;
     } else if (user.role === 'doctor') {
-      roleData = await Doctor.findOne({ userId: user._id });
+        roleData = user.doctorData;
     } else if (user.role === 'admin') {
       // Admin might not have specific role data, but we can return a placeholder
       roleData = { isAdmin: true };

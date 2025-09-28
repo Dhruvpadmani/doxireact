@@ -2,8 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Review = require('../models/Review');
 const Appointment = require('../models/Appointment');
-const Doctor = require('../models/Doctor');
-const Patient = require('../models/Patient');
+const User = require('../models/User');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -36,15 +35,6 @@ router.post('/', authenticateToken, authorizeRole('patient'), [
       aspects
     } = req.body;
 
-    // Get patient
-    const patient = await Patient.findOne({ userId: req.user._id });
-    if (!patient) {
-      return res.status(404).json({
-        message: 'Patient profile not found',
-        code: 'PATIENT_NOT_FOUND'
-      });
-    }
-
     // Get appointment
     const appointment = await Appointment.findById(appointmentId)
       .populate('doctorId');
@@ -57,7 +47,7 @@ router.post('/', authenticateToken, authorizeRole('patient'), [
     }
 
     // Check if appointment belongs to this patient
-    if (appointment.patientId.toString() !== patient._id.toString()) {
+      if (appointment.patientId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         message: 'Access denied',
         code: 'ACCESS_DENIED'
@@ -83,7 +73,7 @@ router.post('/', authenticateToken, authorizeRole('patient'), [
 
     // Create review
     const review = new Review({
-      patientId: patient._id,
+        patientId: req.user._id,
       doctorId: appointment.doctorId._id,
       appointmentId,
       rating,
@@ -130,13 +120,13 @@ router.get('/', async (req, res) => {
     const reviews = await Review.find(query)
       .populate({
         path: 'patientId',
-        select: 'patientId',
+          select: 'patientData.patientId',
         populate: {
           path: 'userId',
           select: 'profile.firstName profile.lastName'
         }
       })
-      .populate('doctorId', 'doctorId specialization')
+        .populate('doctorId', 'doctorData.doctorId doctorData.specialization')
       .populate('appointmentId', 'appointmentId appointmentDate')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
@@ -167,13 +157,13 @@ router.get('/:id', async (req, res) => {
     const review = await Review.findById(req.params.id)
       .populate({
         path: 'patientId',
-        select: 'patientId',
+          select: 'patientData.patientId',
         populate: {
           path: 'userId',
           select: 'profile.firstName profile.lastName'
         }
       })
-      .populate('doctorId', 'doctorId specialization')
+        .populate('doctorId', 'doctorData.doctorId doctorData.specialization')
       .populate('appointmentId', 'appointmentId appointmentDate');
 
     if (!review) {
@@ -225,8 +215,7 @@ router.put('/:id', authenticateToken, authorizeRole('patient'), [
     }
 
     // Check if user has permission to update this review
-    const patient = await Patient.findOne({ userId: req.user._id });
-    if (!patient || review.patientId.toString() !== patient._id.toString()) {
+      if (review.patientId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         message: 'Access denied',
         code: 'ACCESS_DENIED'
@@ -299,8 +288,7 @@ router.put('/:id/respond', authenticateToken, authorizeRole('doctor', 'admin'), 
 
     // Check if user has permission to respond to this review
     if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor || review.doctorId.toString() !== doctor._id.toString()) {
+        if (review.doctorId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'
@@ -389,8 +377,7 @@ router.delete('/:id', authenticateToken, authorizeRole('patient'), async (req, r
     }
 
     // Check if user has permission to delete this review
-    const patient = await Patient.findOne({ userId: req.user._id });
-    if (!patient || review.patientId.toString() !== patient._id.toString()) {
+      if (review.patientId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         message: 'Access denied',
         code: 'ACCESS_DENIED'
@@ -450,7 +437,7 @@ router.get('/doctor/:doctorId', async (req, res) => {
     }
 
     const reviews = await Review.find(query)
-      .populate('patientId', 'patientId')
+        .populate('patientId', 'patientData.patientId')
       .populate('appointmentId', 'appointmentId appointmentDate')
       .sort(sort)
       .limit(limit * 1)

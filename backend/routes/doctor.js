@@ -1,7 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const Doctor = require('../models/Doctor');
-const Patient = require('../models/Patient');
+const User = require('../models/User');
 const Appointment = require('../models/Appointment');
 const Prescription = require('../models/Prescription');
 const Report = require('../models/Report');
@@ -18,10 +17,9 @@ router.use(authorizeRole('doctor'));
 // Get doctor profile
 router.get('/profile', async (req, res) => {
   try {
-    const doctor = await Doctor.findOne({ userId: req.user._id })
-      .populate('userId', 'email profile');
+      const user = await User.findById(req.user._id);
 
-    if (!doctor) {
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -29,7 +27,27 @@ router.get('/profile', async (req, res) => {
     }
 
     res.json({
-      doctor
+        doctor: {
+            doctorId: user.doctorData.doctorId,
+            licenseNumber: user.doctorData.licenseNumber,
+            specialization: user.doctorData.specialization,
+            qualifications: user.doctorData.qualifications,
+            experience: user.doctorData.experience,
+            consultationFee: user.doctorData.consultationFee,
+            bio: user.doctorData.bio,
+            languages: user.doctorData.languages,
+            availability: user.doctorData.availability,
+            holidays: user.doctorData.holidays,
+            rating: user.doctorData.rating,
+            isVerified: user.doctorData.isVerified,
+            verificationDocuments: user.doctorData.verificationDocuments,
+            consultationTypes: user.doctorData.consultationTypes,
+            user: {
+                id: user._id,
+                email: user.email,
+                profile: user.profile
+            }
+        }
     });
   } catch (error) {
     console.error('Get doctor profile error:', error);
@@ -91,13 +109,15 @@ router.put('/profile', [
 // Dashboard statistics
 router.get('/dashboard', async (req, res) => {
   try {
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
+
+      const doctorId = user._id; // In the new structure, the user ID is the doctor ID
 
     const [
       totalAppointments,
@@ -106,39 +126,40 @@ router.get('/dashboard', async (req, res) => {
       completedAppointments,
       totalPrescriptions,
       totalReviews,
-      averageRating,
-      recentAppointments,
-      upcomingAppointments
+        averageRating
     ] = await Promise.all([
-      Appointment.countDocuments({ doctorId: doctor._id }),
+        Appointment.countDocuments({doctorId: doctorId}),
       Appointment.countDocuments({
-        doctorId: doctor._id,
+          doctorId: doctorId,
         appointmentDate: {
           $gte: new Date(new Date().setHours(0, 0, 0, 0)),
           $lt: new Date(new Date().setHours(23, 59, 59, 999))
         }
       }),
-      Appointment.countDocuments({ doctorId: doctor._id, status: 'scheduled' }),
-      Appointment.countDocuments({ doctorId: doctor._id, status: 'completed' }),
-      Prescription.countDocuments({ doctorId: doctor._id }),
-      Review.countDocuments({ doctorId: doctor._id, status: 'approved' }),
+        Appointment.countDocuments({doctorId: doctorId, status: 'scheduled'}),
+        Appointment.countDocuments({doctorId: doctorId, status: 'completed'}),
+        Prescription.countDocuments({doctorId: doctorId}),
+        Review.countDocuments({doctorId: doctorId, status: 'approved'}),
       Review.aggregate([
-        { $match: { doctorId: doctor._id, status: 'approved' } },
+          {$match: {doctorId: doctorId, status: 'approved'}},
         { $group: { _id: null, averageRating: { $avg: '$rating' } } }
-      ]),
-      Appointment.find({ doctorId: doctor._id })
-        .populate('patientId', 'patientId')
-        .sort({ createdAt: -1 })
-        .limit(5),
-      Appointment.find({
-        doctorId: doctor._id,
-        appointmentDate: { $gte: new Date() },
-        status: { $in: ['scheduled', 'confirmed'] }
-      })
-        .populate('patientId', 'patientId')
-        .sort({ appointmentDate: 1 })
-        .limit(5)
+      ])
     ]);
+
+      // Get recent and upcoming appointments separately to avoid complex Promise.all
+      const recentAppointments = await Appointment.find({doctorId: doctorId})
+          .populate('patientId', 'patientId')
+          .sort({createdAt: -1})
+          .limit(5);
+
+      const upcomingAppointments = await Appointment.find({
+          doctorId: doctorId,
+          appointmentDate: {$gte: new Date()},
+          status: {$in: ['scheduled', 'confirmed']}
+      })
+          .populate('patientId', 'patientId')
+          .sort({appointmentDate: 1})
+          .limit(5);
 
     res.json({
       statistics: {
@@ -149,7 +170,7 @@ router.get('/dashboard', async (req, res) => {
         totalPrescriptions,
         totalReviews,
         averageRating: averageRating[0]?.averageRating || 0,
-        rating: doctor.rating
+          rating: user.doctorData.rating
       },
       recent: {
         appointments: recentAppointments,
@@ -169,16 +190,16 @@ router.get('/dashboard', async (req, res) => {
 router.get('/appointments', async (req, res) => {
   try {
     const { page = 1, limit = 10, status, date, patientId } = req.query;
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
 
-    const query = { doctorId: doctor._id };
+      const query = {doctorId: user._id};
     
     if (status) query.status = status;
     if (patientId) query.patientId = patientId;
@@ -217,8 +238,8 @@ router.get('/appointments', async (req, res) => {
 // Get single appointment
 router.get('/appointments/:id', async (req, res) => {
   try {
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -227,7 +248,7 @@ router.get('/appointments/:id', async (req, res) => {
 
     const appointment = await Appointment.findOne({
       _id: req.params.id,
-      doctorId: doctor._id
+        doctorId: user._id
     })
       .populate('patientId', 'patientId')
       .populate('prescription');
@@ -313,9 +334,9 @@ router.put('/appointments/:id/status', [
 router.get('/patients', async (req, res) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -323,22 +344,22 @@ router.get('/patients', async (req, res) => {
     }
 
     // Get patients who have appointments with this doctor
-    const patientIds = await Appointment.distinct('patientId', { doctorId: doctor._id });
-    
-    const query = { _id: { $in: patientIds } };
+      const patientIds = await Appointment.distinct('patientId', {doctorId: user._id});
+
+      const query = {_id: {$in: patientIds}, role: 'patient'};
     if (search) {
       query.$or = [
-        { patientId: { $regex: search, $options: 'i' } }
+          {'patientData.patientId': {$regex: search, $options: 'i'}}
       ];
     }
 
-    const patients = await Patient.find(query)
-      .populate('userId', 'email profile')
+      const patients = await User.find(query)
+          .select('email profile patientData.patientId')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    const total = await Patient.countDocuments(query);
+      const total = await User.countDocuments(query);
 
     res.json({
       patients,
@@ -360,18 +381,17 @@ router.get('/patients', async (req, res) => {
 // Get patient details
 router.get('/patients/:id', async (req, res) => {
   try {
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
 
-    const patient = await Patient.findById(req.params.id)
-      .populate('userId', 'email profile');
+      const patient = await User.findById(req.params.id);
 
-    if (!patient) {
+      if (!patient || patient.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient not found',
         code: 'PATIENT_NOT_FOUND'
@@ -381,17 +401,30 @@ router.get('/patients/:id', async (req, res) => {
     // Get patient's appointments with this doctor
     const appointments = await Appointment.find({
       patientId: patient._id,
-      doctorId: doctor._id
+        doctorId: user._id
     }).sort({ appointmentDate: -1 });
 
     // Get patient's prescriptions from this doctor
     const prescriptions = await Prescription.find({
       patientId: patient._id,
-      doctorId: doctor._id
+        doctorId: user._id
     }).sort({ createdAt: -1 });
 
     res.json({
-      patient,
+        patient: {
+            patientId: patient.patientData.patientId,
+            emergencyContact: patient.patientData.emergencyContact,
+            medicalHistory: patient.patientData.medicalHistory,
+            allergies: patient.patientData.allergies,
+            medications: patient.patientData.medications,
+            insurance: patient.patientData.insurance,
+            preferences: patient.patientData.preferences,
+            user: {
+                id: patient._id,
+                email: patient.email,
+                profile: patient.profile
+            }
+        },
       appointments,
       prescriptions
     });
@@ -408,16 +441,16 @@ router.get('/patients/:id', async (req, res) => {
 router.get('/prescriptions', async (req, res) => {
   try {
     const { page = 1, limit = 10, patientId, status } = req.query;
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
 
-    const query = { doctorId: doctor._id };
+      const query = {doctorId: user._id};
     if (patientId) query.patientId = patientId;
     if (status) query.status = status;
 
@@ -451,16 +484,16 @@ router.get('/prescriptions', async (req, res) => {
 router.get('/reviews', async (req, res) => {
   try {
     const { page = 1, limit = 10, rating } = req.query;
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
 
-    const query = { doctorId: doctor._id, status: 'approved' };
+      const query = {doctorId: user._id, status: 'approved'};
     if (rating) query.rating = parseInt(rating);
 
     const reviews = await Review.find(query)
@@ -502,9 +535,9 @@ router.put('/reviews/:id/respond', [
     }
 
     const { response } = req.body;
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -513,7 +546,7 @@ router.put('/reviews/:id/respond', [
 
     const review = await Review.findOne({
       _id: req.params.id,
-      doctorId: doctor._id
+        doctorId: user._id
     });
 
     if (!review) {
@@ -560,21 +593,21 @@ router.put('/availability', [
     }
 
     const { availability } = req.body;
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
 
-    doctor.availability = availability;
-    await doctor.save();
+      user.doctorData.availability = availability;
+      await user.save();
 
     res.json({
       message: 'Availability updated successfully',
-      availability: doctor.availability
+        availability: user.doctorData.availability
     });
   } catch (error) {
     console.error('Update availability error:', error);
@@ -601,26 +634,26 @@ router.post('/holidays', [
     }
 
     const { date, reason, isRecurring } = req.body;
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    
-    if (!doctor) {
+      const user = await User.findById(req.user._id);
+
+      if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
 
-    doctor.holidays.push({
+      user.doctorData.holidays.push({
       date: new Date(date),
       reason,
       isRecurring: isRecurring || false
     });
 
-    await doctor.save();
+      await user.save();
 
     res.json({
       message: 'Holiday added successfully',
-      holidays: doctor.holidays
+        holidays: user.doctorData.holidays
     });
   } catch (error) {
     console.error('Add holiday error:', error);

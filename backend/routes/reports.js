@@ -1,8 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
-const Doctor = require('../models/Doctor');
-const Patient = require('../models/Patient');
+const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
@@ -49,8 +48,7 @@ router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
     } = req.body;
 
     // Get doctor
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    if (!doctor) {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -58,8 +56,8 @@ router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
     }
 
     // Verify patient exists
-    const patient = await Patient.findById(patientId);
-    if (!patient) {
+      const patient = await User.findById(patientId);
+      if (!patient || patient.role !== 'patient') {
       return res.status(404).json({
         message: 'Patient not found',
         code: 'PATIENT_NOT_FOUND'
@@ -69,7 +67,7 @@ router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
     // Create report
     const report = new Report({
       patientId,
-      doctorId: doctor._id,
+        doctorId: req.user._id,
       type,
       title,
       description,
@@ -87,13 +85,13 @@ router.post('/', authenticateToken, authorizeRole('doctor', 'admin'), [
 
     // Create notification for patient
     const notification = new Notification({
-      userId: patient.userId,
+        userId: patient._id,
       type: 'report',
       title: 'New Medical Report Available',
       message: `Your ${type} report "${title}" is ready for review`,
       data: {
         reportId: report._id,
-        doctorId: doctor._id,
+          doctorId: req.user._id,
         type: report.type
       }
     });
@@ -130,23 +128,9 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // Apply role-based filtering
     if (req.user.role === 'patient') {
-      const patient = await Patient.findOne({ userId: req.user._id });
-      if (!patient) {
-        return res.status(404).json({
-          message: 'Patient profile not found',
-          code: 'PATIENT_NOT_FOUND'
-        });
-      }
-      query.patientId = patient._id;
+        query.patientId = req.user._id;
     } else if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor) {
-        return res.status(404).json({
-          message: 'Doctor profile not found',
-          code: 'DOCTOR_NOT_FOUND'
-        });
-      }
-      query.doctorId = doctor._id;
+        query.doctorId = req.user._id;
     }
 
     // Additional filters
@@ -156,9 +140,9 @@ router.get('/', authenticateToken, async (req, res) => {
     if (status) query.status = status;
 
     const reports = await Report.find(query)
-      .populate('patientId', 'patientId')
-      .populate('doctorId', 'doctorId specialization')
-      .populate('reviewedBy', 'doctorId specialization')
+        .populate('patientId', 'patientData.patientId')
+        .populate('doctorId', 'doctorData.doctorId doctorData.specialization')
+        .populate('reviewedBy', 'doctorData.doctorId doctorData.specialization')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -186,9 +170,9 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
-      .populate('patientId', 'patientId')
-      .populate('doctorId', 'doctorId specialization')
-      .populate('reviewedBy', 'doctorId specialization');
+        .populate('patientId', 'patientData.patientId')
+        .populate('doctorId', 'doctorData.doctorId doctorData.specialization')
+        .populate('reviewedBy', 'doctorData.doctorId doctorData.specialization');
 
     if (!report) {
       return res.status(404).json({
@@ -203,13 +187,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
     if (req.user.role === 'admin') {
       hasAccess = true;
     } else if (req.user.role === 'patient') {
-      const patient = await Patient.findOne({ userId: req.user._id });
-      hasAccess = patient && report.patientId._id.toString() === patient._id.toString();
+        hasAccess = report.patientId._id.toString() === req.user._id.toString();
     } else if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      hasAccess = doctor && (
-        report.doctorId._id.toString() === doctor._id.toString() ||
-        report.sharedWith.some(share => share.doctorId.toString() === doctor._id.toString())
+        hasAccess = (
+            report.doctorId._id.toString() === req.user._id.toString() ||
+            report.sharedWith.some(share => share.doctorId.toString() === req.user._id.toString())
       );
     }
 
@@ -266,8 +248,7 @@ router.put('/:id', authenticateToken, authorizeRole('doctor', 'admin'), [
 
     // Check if user has permission to update this report
     if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor || report.doctorId.toString() !== doctor._id.toString()) {
+        if (report.doctorId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'
@@ -341,16 +322,15 @@ router.put('/:id/review', authenticateToken, authorizeRole('doctor', 'admin'), [
       });
     }
 
-    // Get doctor
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    if (!doctor) {
+      // Check if user is doctor
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
       });
     }
 
-    report.reviewedBy = doctor._id;
+      report.reviewedBy = req.user._id;
     report.reviewedAt = new Date();
     if (recommendations) report.recommendations = recommendations;
     if (followUpRequired !== undefined) report.followUpRequired = followUpRequired;
@@ -403,8 +383,7 @@ router.post('/:id/share', authenticateToken, authorizeRole('doctor', 'admin'), [
 
     // Check if user has permission to share this report
     if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor || report.doctorId.toString() !== doctor._id.toString()) {
+        if (report.doctorId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'
@@ -413,8 +392,8 @@ router.post('/:id/share', authenticateToken, authorizeRole('doctor', 'admin'), [
     }
 
     // Check if doctor exists
-    const targetDoctor = await Doctor.findById(doctorId);
-    if (!targetDoctor) {
+      const targetDoctor = await User.findById(doctorId);
+      if (!targetDoctor || targetDoctor.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -476,14 +455,12 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
     if (req.user.role === 'admin') {
       hasAccess = true;
     } else if (req.user.role === 'patient') {
-      const patient = await Patient.findOne({ userId: req.user._id });
-      hasAccess = patient && report.patientId.toString() === patient._id.toString();
+        hasAccess = report.patientId.toString() === req.user._id.toString();
     } else if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      hasAccess = doctor && (
-        report.doctorId.toString() === doctor._id.toString() ||
-        report.sharedWith.some(share => 
-          share.doctorId.toString() === doctor._id.toString() && 
+        hasAccess = (
+            report.doctorId.toString() === req.user._id.toString() ||
+        report.sharedWith.some(share =>
+            share.doctorId.toString() === req.user._id.toString() &&
           share.accessLevel === 'download'
         )
       );
@@ -534,8 +511,7 @@ router.delete('/:id', authenticateToken, authorizeRole('doctor', 'admin'), async
 
     // Check if user has permission to delete this report
     if (req.user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: req.user._id });
-      if (!doctor || report.doctorId.toString() !== doctor._id.toString()) {
+        if (report.doctorId.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           message: 'Access denied',
           code: 'ACCESS_DENIED'
