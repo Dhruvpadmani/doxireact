@@ -1,24 +1,7 @@
-import { useState, useEffect } from 'react'
-import { 
-  Settings, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Calendar, 
-  Clock,
-  Shield,
-  Bell,
-  Eye,
-  EyeOff,
-  Save,
-  Edit,
-  Camera,
-  CheckCircle,
-  AlertTriangle
-} from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-import { doctorAPI } from '../../services/api'
+import {useEffect, useState} from 'react'
+import {Bell, Calendar, Eye, EyeOff, Save, Shield, User} from 'lucide-react'
+import {useAuth} from '../../contexts/AuthContext'
+import {doctorAPI} from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 export default function DoctorSettings() {
@@ -71,9 +54,42 @@ export default function DoctorSettings() {
   const fetchProfile = async () => {
     try {
       setLoading(true)
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      // Profile data is already set in state
+        // Fetch real profile data from API
+        const response = await doctorAPI.getProfile()
+        if (response.data && response.data.user) {
+            const userData = response.data.user
+            setProfile({
+                firstName: userData.profile?.firstName || '',
+                lastName: userData.profile?.lastName || '',
+                email: userData.email || '',
+                phone: userData.profile?.phone || '',
+                specialization: userData.specialization || '',
+                experience: userData.experience || '',
+                qualification: userData.qualification || '',
+                licenseNumber: userData.licenseNumber || '',
+                hospital: userData.hospital || '',
+                address: userData.profile?.address || '',
+                bio: userData.profile?.bio || '',
+                consultationFee: userData.consultationFee || 0,
+                availability: userData.profile?.availability || {
+                    monday: {start: '09:00', end: '17:00', available: true},
+                    tuesday: {start: '09:00', end: '17:00', available: true},
+                    wednesday: {start: '09:00', end: '17:00', available: true},
+                    thursday: {start: '09:00', end: '17:00', available: true},
+                    friday: {start: '09:00', end: '17:00', available: true},
+                    saturday: {start: '09:00', end: '13:00', available: true},
+                    sunday: {start: '00:00', end: '00:00', available: false}
+                },
+                notifications: userData.profile?.notifications || {
+                    email: true,
+                    sms: true,
+                    push: true,
+                    appointmentReminders: true,
+                    patientMessages: true,
+                    systemUpdates: true
+                }
+            })
+        }
     } catch (error) {
       console.error('Failed to fetch profile:', error)
     } finally {
@@ -84,9 +100,33 @@ export default function DoctorSettings() {
   const handleSaveProfile = async () => {
     try {
       setSaving(true)
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      alert('Profile updated successfully!')
+        // Update profile via API
+        const profileData = {
+            profile: {
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                phone: profile.phone,
+                address: profile.address,
+                bio: profile.bio,
+                availability: profile.availability,
+                notifications: profile.notifications
+            },
+            specialization: profile.specialization,
+            experience: profile.experience,
+            qualification: profile.qualification,
+            licenseNumber: profile.licenseNumber,
+            hospital: profile.hospital,
+            consultationFee: profile.consultationFee,
+            email: profile.email
+        }
+
+        const response = await doctorAPI.updateProfile(profileData)
+
+        if (response.data) {
+            alert('Profile updated successfully!')
+        } else {
+            throw new Error('Invalid response from server')
+        }
     } catch (error) {
       console.error('Failed to update profile:', error)
       alert('Failed to update profile. Please try again.')
@@ -100,16 +140,33 @@ export default function DoctorSettings() {
       alert('New passwords do not match!')
       return
     }
+
+      if (passwordForm.newPassword.length < 6) {
+          alert('Password must be at least 6 characters long!')
+          return
+      }
     
     try {
       setSaving(true)
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      alert('Password changed successfully!')
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+        // Change password via API
+        const response = await doctorAPI.changePassword({
+            currentPassword: passwordForm.currentPassword,
+            newPassword: passwordForm.newPassword
+        })
+
+        if (response.data) {
+            alert('Password changed successfully!')
+            setPasswordForm({currentPassword: '', newPassword: '', confirmPassword: ''})
+        } else {
+            throw new Error('Invalid response from server')
+        }
     } catch (error) {
       console.error('Failed to change password:', error)
-      alert('Failed to change password. Please try again.')
+        if (error.response && error.response.data && error.response.data.message) {
+            alert(`Failed to change password: ${error.response.data.message}`)
+        } else {
+            alert('Failed to change password. Please try again.')
+        }
     } finally {
       setSaving(false)
     }

@@ -1,23 +1,21 @@
-import { useState, useEffect } from 'react'
-import { 
-  Calendar, 
-  Clock, 
-  User, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Video, 
-  Monitor,
+import {useEffect, useState} from 'react'
+import {
+  Calendar,
   CheckCircle,
-  XCircle,
+  Download,
   Eye,
   FileText,
+  MapPin,
+  Monitor,
+  Phone,
   Search,
-  Download,
-  X
+  User,
+  Video,
+  X,
+  XCircle
 } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-import { doctorAPI, reportsAPI } from '../../services/api'
+import {useAuth} from '../../contexts/AuthContext'
+import {doctorAPI} from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 // No demo data - using real API data only
@@ -50,26 +48,13 @@ export default function DoctorAppointments() {
   const fetchAppointments = async () => {
     try {
       setLoading(true)
-      
-      // First try to load from global appointments (booked by patients)
-      const globalAppointments = JSON.parse(localStorage.getItem('globalAppointments') || '[]')
-      
-      if (globalAppointments.length > 0) {
-        // Filter appointments for current doctor
-        const doctorAppointments = globalAppointments.filter(apt => apt.doctorId === user.id)
-        setAppointments(doctorAppointments)
-      } else {
-        // If no global appointments, try API
-        try {
-          const response = await doctorAPI.getAppointments()
-          if (response.data && response.data.appointments) {
+
+        // Fetch appointments from API
+        const response = await doctorAPI.getAppointments()
+        if (response.data && response.data.appointments) {
             setAppointments(response.data.appointments)
-          } else {
+        } else {
             setAppointments([])
-          }
-        } catch (apiError) {
-          setAppointments([])
-        }
       }
     } catch (error) {
       console.error('Failed to fetch appointments:', error)
@@ -107,62 +92,39 @@ export default function DoctorAppointments() {
   const handleAppointmentAction = async (appointmentId, action) => {
     try {
       setActionLoading(true)
-      
-      // Update global appointments
-      const globalAppointments = JSON.parse(localStorage.getItem('globalAppointments') || '[]')
-      const updatedGlobalAppointments = globalAppointments.map(apt => {
-        if (apt.id === appointmentId) {
-          return {
-            ...apt,
+
+        // Update appointment status via API
+        const response = await doctorAPI.updateAppointmentStatus(appointmentId, {
             status: action,
-            doctorNotes: doctorNotes || apt.doctorNotes,
-            updatedAt: new Date().toISOString()
-          }
-        }
-        return apt
+            doctorNotes: doctorNotes || (selectedAppointment ? selectedAppointment.doctorNotes : '')
       })
-      
-      // Save updated global appointments
-      localStorage.setItem('globalAppointments', JSON.stringify(updatedGlobalAppointments))
-      
-      // Update local state
-      const updatedAppointments = appointments.map(apt => {
-        if (apt.id === appointmentId) {
-          return {
-            ...apt,
-            status: action,
-            doctorNotes: doctorNotes || apt.doctorNotes,
-            updatedAt: new Date().toISOString()
-          }
+
+        if (response.data && response.data.appointment) {
+            // Update local state with the updated appointment
+            const updatedAppointments = appointments.map(apt => {
+                if (apt.id === appointmentId) {
+                    return response.data.appointment
+                }
+                return apt
+            })
+
+            setAppointments(updatedAppointments)
+
+            // If there's a selected appointment, update it too
+            if (selectedAppointment && selectedAppointment.id === appointmentId) {
+                setSelectedAppointment(response.data.appointment)
+            }
+
+            console.log('✅ Appointment updated via API:', action)
+
+            // Close details modal
+            setShowDetails(false)
+            setDoctorNotes('')
+
+            alert(`Appointment ${action} successfully!`)
+        } else {
+            throw new Error('Invalid response from server')
         }
-        return apt
-      })
-      
-      setAppointments(updatedAppointments)
-      
-      // Also update patient appointments if they exist (user-specific)
-      const patientAppointments = JSON.parse(localStorage.getItem(`patientAppointments_${selectedAppointment.patientId}`) || '[]')
-      const updatedPatientAppointments = patientAppointments.map(apt => {
-        if (apt.id === appointmentId) {
-          return {
-            ...apt,
-            status: action,
-            doctorNotes: doctorNotes || apt.doctorNotes,
-            updatedAt: new Date().toISOString()
-          }
-        }
-        return apt
-      })
-      localStorage.setItem(`patientAppointments_${selectedAppointment.patientId}`, JSON.stringify(updatedPatientAppointments))
-      
-      console.log('✅ Appointment updated in global appointments:', action)
-      
-      // Close details modal
-      setShowDetails(false)
-      setSelectedAppointment(null)
-      setDoctorNotes('')
-      
-      alert(`Appointment ${action} successfully!`)
     } catch (error) {
       console.error('Failed to update appointment:', error)
       alert('Failed to update appointment. Please try again.')

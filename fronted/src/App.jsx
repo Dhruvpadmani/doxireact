@@ -21,9 +21,7 @@ import Settings from './pages/admin/Settings'
 import DoctorDashboard from './pages/doctor/DoctorDashboard'
 import DoctorAppointments from './pages/doctor/DoctorAppointments'
 import DoctorPatients from './pages/doctor/DoctorPatients'
-import DoctorReports from './pages/doctor/DoctorReports'
 import DoctorReviews from './pages/doctor/DoctorReviews'
-import DoctorAnalytics from './pages/doctor/DoctorAnalytics'
 import DoctorSettings from './pages/doctor/DoctorSettings'
 import StandaloneDoctorAppointments from './pages/DoctorAppointments'
 import DoctorLayout from './layouts/DoctorLayout'
@@ -97,9 +95,7 @@ function AppRoutes() {
         <Route index element={<DoctorDashboard />} />
         <Route path="appointments" element={<DoctorAppointments />} />
         <Route path="patients" element={<DoctorPatients />} />
-        <Route path="reports" element={<DoctorReports />} />
         <Route path="reviews" element={<DoctorReviews />} />
-        <Route path="analytics" element={<DoctorAnalytics />} />
         <Route path="settings" element={<DoctorSettings />} />
       </Route>
       

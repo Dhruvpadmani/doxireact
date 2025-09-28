@@ -19,7 +19,7 @@ router.use(authorizeRole('patient'));
 router.get('/profile', async (req, res) => {
   try {
     const patient = await Patient.findOne({ userId: req.user._id })
-      .populate('userId', 'email profile');
+        .populate('userId', 'email profile');
 
     if (!patient) {
       return res.status(404).json({
@@ -42,12 +42,24 @@ router.get('/profile', async (req, res) => {
 
 // Update patient profile
 router.put('/profile', [
-  body('emergencyContact.name').optional().notEmpty(),
-  body('emergencyContact.relationship').optional().notEmpty(),
+  body('emergencyContact.name').optional().notEmpty().withMessage('Emergency contact name cannot be empty'),
+  body('emergencyContact.relationship').optional().notEmpty().withMessage('Emergency contact relationship cannot be empty'),
   body('emergencyContact.phone').optional().matches(/^\d{10}$/).withMessage('Phone number must be exactly 10 digits'),
   body('medicalHistory').optional().isArray(),
+  body('medicalHistory.*.condition').optional().isString().trim().escape().notEmpty(),
+  body('medicalHistory.*.diagnosisDate').optional().isISO8601(),
+  body('medicalHistory.*.status').optional().isIn(['active', 'resolved', 'chronic']),
+  body('medicalHistory.*.notes').optional().isString().trim().escape(),
   body('allergies').optional().isArray(),
+  body('allergies.*.allergen').optional().isString().trim().escape().notEmpty(),
+  body('allergies.*.severity').optional().isIn(['mild', 'moderate', 'severe']),
+  body('allergies.*.reaction').optional().isString().trim().escape(),
   body('medications').optional().isArray(),
+  body('medications.*.name').optional().isString().trim().escape().notEmpty(),
+  body('medications.*.dosage').optional().isString().trim().escape(),
+  body('medications.*.frequency').optional().isString().trim().escape(),
+  body('medications.*.startDate').optional().isISO8601(),
+  body('medications.*.endDate').optional().isISO8601(),
   body('insurance.provider').optional().isString(),
   body('insurance.policyNumber').optional().isString(),
   body('preferences.preferredLanguage').optional().isString(),
@@ -153,17 +165,17 @@ router.get('/dashboard', async (req, res) => {
       Report.countDocuments({ patientId: patient._id }),
       Review.countDocuments({ patientId: patient._id }),
       Appointment.find({ patientId: patient._id })
-        .populate('doctorId', 'doctorId specialization')
-        .sort({ appointmentDate: -1 })
-        .limit(5),
+          .populate('doctorId', 'doctorId specialization')
+          .sort({appointmentDate: -1})
+          .limit(5),
       Prescription.find({ patientId: patient._id })
-        .populate('doctorId', 'doctorId specialization')
-        .sort({ createdAt: -1 })
-        .limit(5),
+          .populate('doctorId', 'doctorId specialization')
+          .sort({createdAt: -1})
+          .limit(5),
       Report.find({ patientId: patient._id })
-        .populate('doctorId', 'doctorId specialization')
-        .sort({ createdAt: -1 })
-        .limit(5)
+          .populate('doctorId', 'doctorId specialization')
+          .sort({createdAt: -1})
+          .limit(5)
     ]);
 
     res.json({
@@ -206,10 +218,10 @@ router.get('/doctors', async (req, res) => {
     }
 
     const doctors = await Doctor.find(query)
-      .populate('userId', 'email profile')
-      .sort({ 'rating.average': -1, 'rating.count': -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+        .populate('userId', 'email profile')
+        .sort({'rating.average': -1, 'rating.count': -1})
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
 
     const total = await Doctor.countDocuments(query);
 
@@ -234,7 +246,7 @@ router.get('/doctors', async (req, res) => {
 router.get('/doctors/:id', async (req, res) => {
   try {
     const doctor = await Doctor.findById(req.params.id)
-      .populate('userId', 'email profile');
+        .populate('userId', 'email profile');
 
     if (!doctor || !doctor.isVerified) {
       return res.status(404).json({
@@ -248,9 +260,9 @@ router.get('/doctors/:id', async (req, res) => {
       doctorId: doctor._id,
       status: 'approved'
     })
-      .populate('patientId', 'patientId')
-      .sort({ createdAt: -1 })
-      .limit(10);
+        .populate('patientId', 'patientId')
+        .sort({createdAt: -1})
+        .limit(10);
 
     res.json({
       doctor,
@@ -270,7 +282,7 @@ router.get('/appointments', async (req, res) => {
   try {
     const { page = 1, limit = 10, status, date, doctorId } = req.query;
     const patient = await Patient.findOne({ userId: req.user._id });
-    
+
     if (!patient) {
       return res.status(404).json({
         message: 'Patient profile not found',
@@ -279,7 +291,7 @@ router.get('/appointments', async (req, res) => {
     }
 
     const query = { patientId: patient._id };
-    
+
     if (status) query.status = status;
     if (doctorId) query.doctorId = doctorId;
     if (date) {
@@ -290,10 +302,10 @@ router.get('/appointments', async (req, res) => {
     }
 
     const appointments = await Appointment.find(query)
-      .populate('doctorId', 'doctorId specialization')
-      .sort({ appointmentDate: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+        .populate('doctorId', 'doctorId specialization')
+        .sort({appointmentDate: -1})
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
 
     const total = await Appointment.countDocuments(query);
 
@@ -329,8 +341,8 @@ router.get('/appointments/:id', async (req, res) => {
       _id: req.params.id,
       patientId: patient._id
     })
-      .populate('doctorId', 'doctorId specialization')
-      .populate('prescription');
+        .populate('doctorId', 'doctorId specialization')
+        .populate('prescription');
 
     if (!appointment) {
       return res.status(404).json({
@@ -366,7 +378,7 @@ router.put('/appointments/:id/cancel', [
 
     const { reason } = req.body;
     const patient = await Patient.findOne({ userId: req.user._id });
-    
+
     if (!patient) {
       return res.status(404).json({
         message: 'Patient profile not found',
@@ -424,7 +436,7 @@ router.get('/prescriptions', async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     const patient = await Patient.findOne({ userId: req.user._id });
-    
+
     if (!patient) {
       return res.status(404).json({
         message: 'Patient profile not found',
@@ -436,11 +448,11 @@ router.get('/prescriptions', async (req, res) => {
     if (status) query.status = status;
 
     const prescriptions = await Prescription.find(query)
-      .populate('doctorId', 'doctorId specialization')
-      .populate('appointmentId', 'appointmentId appointmentDate')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+        .populate('doctorId', 'doctorId specialization')
+        .populate('appointmentId', 'appointmentId appointmentDate')
+        .sort({createdAt: -1})
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
 
     const total = await Prescription.countDocuments(query);
 
@@ -462,11 +474,11 @@ router.get('/prescriptions', async (req, res) => {
 });
 
 // Get reports
-router.get('/reports', authenticateToken, async (req, res) => {
+router.get('/reports', async (req, res) => {
   try {
     const { page = 1, limit = 10, type, status } = req.query;
     const patient = await Patient.findOne({ userId: req.user._id });
-    
+
     if (!patient) {
       return res.status(404).json({
         message: 'Patient profile not found',
@@ -479,10 +491,10 @@ router.get('/reports', authenticateToken, async (req, res) => {
     if (status) query.status = status;
 
     const reports = await Report.find(query)
-      .populate('doctorId', 'doctorId specialization')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+        .populate('doctorId', 'doctorId specialization')
+        .sort({createdAt: -1})
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
 
     const total = await Report.countDocuments(query);
 
@@ -507,7 +519,7 @@ router.get('/reports', authenticateToken, async (req, res) => {
 router.get('/medical-history', authenticateToken, async (req, res) => {
   try {
     const patient = await Patient.findOne({ userId: req.user._id });
-    
+
     if (!patient) {
       return res.status(404).json({
         message: 'Patient profile not found',
@@ -518,14 +530,14 @@ router.get('/medical-history', authenticateToken, async (req, res) => {
     // Get all appointments, prescriptions, and reports
     const [appointments, prescriptions, reports] = await Promise.all([
       Appointment.find({ patientId: patient._id })
-        .populate('doctorId', 'doctorId specialization')
-        .sort({ appointmentDate: -1 }),
+          .populate('doctorId', 'doctorId specialization')
+          .sort({appointmentDate: -1}),
       Prescription.find({ patientId: patient._id })
-        .populate('doctorId', 'doctorId specialization')
-        .sort({ createdAt: -1 }),
+          .populate('doctorId', 'doctorId specialization')
+          .sort({createdAt: -1}),
       Report.find({ patientId: patient._id })
-        .populate('doctorId', 'doctorId specialization')
-        .sort({ createdAt: -1 })
+          .populate('doctorId', 'doctorId specialization')
+          .sort({createdAt: -1})
     ]);
 
     res.json({
@@ -550,6 +562,7 @@ router.post('/emergency', [
   body('type').isIn(['medical_emergency', 'urgent_appointment', 'prescription_urgent', 'report_urgent']),
   body('description').notEmpty().isLength({ max: 1000 }),
   body('symptoms').optional().isArray(),
+  body('symptoms.*').optional().isString().trim().escape(),
   body('priority').optional().isIn(['high', 'critical'])
 ], async (req, res) => {
   try {
@@ -563,7 +576,7 @@ router.post('/emergency', [
 
     const { type, description, symptoms, priority } = req.body;
     const patient = await Patient.findOne({ userId: req.user._id });
-    
+
     if (!patient) {
       return res.status(404).json({
         message: 'Patient profile not found',
@@ -609,7 +622,7 @@ router.get('/emergency-requests', async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     const patient = await Patient.findOne({ userId: req.user._id });
-    
+
     if (!patient) {
       return res.status(404).json({
         message: 'Patient profile not found',
@@ -621,10 +634,10 @@ router.get('/emergency-requests', async (req, res) => {
     if (status) query.status = status;
 
     const requests = await EmergencyRequest.find(query)
-      .populate('assignedTo.doctorId', 'doctorId specialization')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+        .populate('assignedTo.doctorId', 'doctorId specialization')
+        .sort({createdAt: -1})
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
 
     const total = await EmergencyRequest.countDocuments(query);
 
