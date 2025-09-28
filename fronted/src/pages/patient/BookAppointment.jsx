@@ -1,26 +1,28 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { 
-  Calendar, 
-  Clock, 
-  User, 
-  Stethoscope, 
+import {useEffect, useState} from 'react'
+import {Link} from 'react-router-dom'
+import {
+  AlertCircle,
   ArrowLeft,
+  Calendar,
   CheckCircle,
+  Clock,
+  Edit,
+  Eye,
   Filter,
   Search,
-  Plus,
-  Edit,
+  Stethoscope,
   Trash2,
-  Eye,
+  User,
   X
 } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
+import {useAuth} from '../../contexts/AuthContext'
+import {appointmentsAPI, doctorsAPI} from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 export default function BookAppointment() {
   const [activeTab, setActiveTab] = useState('book') // 'book', 'today', 'upcoming', 'last'
   const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
   const [appointmentData, setAppointmentData] = useState({
     doctorId: '',
     date: '',
@@ -41,44 +43,44 @@ export default function BookAppointment() {
   })
   const { user } = useAuth()
 
-  // Load appointments from localStorage - user specific
-  const [appointments, setAppointments] = useState(() => {
-    const savedAppointments = localStorage.getItem(`patientAppointments_${user.id}`)
-    return savedAppointments ? JSON.parse(savedAppointments) : []
-  })
+    // Load appointments from API
+    const [appointments, setAppointments] = useState([])
 
-  // Load doctors from localStorage
+    // Load doctors from API
   const [doctors, setDoctors] = useState([])
 
   // Load doctors on component mount
   useEffect(() => {
     loadDoctors()
-  }, [])
-
-  // Refresh appointments from localStorage - user specific
-  const refreshAppointments = () => {
-    const savedAppointments = localStorage.getItem(`patientAppointments_${user.id}`)
-    if (savedAppointments) {
-      const parsedAppointments = JSON.parse(savedAppointments)
-      setAppointments(parsedAppointments)
-      console.log('✅ Appointments refreshed from localStorage:', parsedAppointments)
+      if (activeTab !== 'book') {
+          loadAppointments()
     }
-  }
+  }, [activeTab])
 
-  const loadDoctors = () => {
+    const loadAppointments = async () => {
+        try {
+            setLoading(true)
+            const response = await appointmentsAPI.getAppointments()
+            setAppointments(response.data.appointments || [])
+        } catch (error) {
+            console.error('Error loading appointments:', error)
+            setError('Failed to load appointments. Please try again.')
+            // Fallback to empty array if API fails
+            setAppointments([])
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const loadDoctors = async () => {
     try {
       console.log('Loading doctors for appointment booking...')
-      const savedDoctors = localStorage.getItem('registeredDoctors')
-      if (savedDoctors) {
-        const doctorsData = JSON.parse(savedDoctors)
-        console.log('Found registered doctors for booking:', doctorsData)
-        setDoctors(doctorsData)
-      } else {
-        console.log('No registered doctors found for booking')
-        setDoctors([])
-      }
+        const response = await doctorsAPI.search()
+        setDoctors(response.data.doctors || [])
+        console.log('Found doctors for booking:', response.data.doctors)
     } catch (error) {
       console.error('Error loading doctors:', error)
+        setError('Failed to load doctors. Please try again.')
       setDoctors([])
     }
   }
@@ -86,45 +88,18 @@ export default function BookAppointment() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+      setError(null)
     
     try {
-      // Mock appointment booking
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      setSuccess(true)
-      
-      // Find selected doctor
-      const selectedDoctor = doctors.find(doctor => doctor.id === appointmentData.doctorId)
-      
-      // Create appointment with full details for both patient and doctor
-      const newAppointment = {
-        id: `APT${Date.now()}`,
-        appointmentId: `APT${Date.now()}`,
-        patientId: user.id,
-        patientName: `${user.profile?.firstName || 'Patient'} ${user.profile?.lastName || 'Name'}`,
-        patientEmail: user.email,
-        patientPhone: user.profile?.phone || 'Not provided',
-        patientAge: user.profile?.age || 0,
-        patientGender: user.profile?.gender || 'Not specified',
+        // Create appointment via API
+        const appointmentPayload = {
         doctorId: appointmentData.doctorId,
-        doctorName: selectedDoctor ? `Dr. ${selectedDoctor.profile?.firstName} ${selectedDoctor.profile?.lastName}` : 'Selected Doctor',
-        doctorEmail: selectedDoctor?.profile?.email || 'doctor@example.com',
-        specialization: selectedDoctor?.specialization || 'General',
         appointmentDate: appointmentData.date,
         appointmentTime: appointmentData.time,
         type: appointmentData.type,
         reason: appointmentData.reason,
         symptoms: [],
-        duration: 30,
         notes: '',
-        status: 'pending',
-        payment: {
-          amount: selectedDoctor?.consultationFee || 0,
-          status: 'pending'
-        },
-        createdAt: new Date().toISOString(),
-        doctorNotes: '',
-        followUpRequired: false,
-        followUpDate: null,
         patientDetails: {
           medicalHistory: user.profile?.medicalHistory || [],
           allergies: user.profile?.allergies || [],
@@ -134,22 +109,14 @@ export default function BookAppointment() {
             relationship: 'Not provided',
             phone: 'Not provided'
           }
-        },
-        reports: []
-      }
-      
-      // Save to patient appointments - user specific
-      const updatedAppointments = [newAppointment, ...appointments]
-      setAppointments(updatedAppointments)
-      localStorage.setItem(`patientAppointments_${user.id}`, JSON.stringify(updatedAppointments))
-      
-      // Save to global appointments (for doctor panel)
-      const globalAppointments = JSON.parse(localStorage.getItem('globalAppointments') || '[]')
-      globalAppointments.push(newAppointment)
-      localStorage.setItem('globalAppointments', JSON.stringify(globalAppointments))
-      
-      console.log('✅ Appointment saved to global appointments:', newAppointment)
-      console.log('📋 Total global appointments:', globalAppointments.length)
+        }
+        }
+
+        const response = await appointmentsAPI.book(appointmentPayload)
+        setSuccess(true)
+
+        // Refresh appointments after successful booking
+        await loadAppointments()
       
       // Reset form
       setAppointmentData({
@@ -159,8 +126,14 @@ export default function BookAppointment() {
         type: 'in_person',
         reason: ''
       })
+
+        // Show success message for a few seconds
+        setTimeout(() => {
+            setSuccess(false)
+        }, 3000)
     } catch (error) {
       console.error('Booking failed:', error)
+        setError(error.response?.data?.message || 'Failed to book appointment. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -248,14 +221,27 @@ export default function BookAppointment() {
 
   const handleDeleteAppointment = async (appointmentId) => {
     if (window.confirm('Are you sure you want to delete this appointment?')) {
+        setLoading(true)
+        setError(null)
       try {
-        const updatedAppointments = appointments.filter(apt => apt.id !== appointmentId)
-        setAppointments(updatedAppointments)
-        localStorage.setItem(`patientAppointments_${user.id}`, JSON.stringify(updatedAppointments))
-        alert('Appointment deleted successfully!')
+          // Cancel appointment via API
+          await appointmentsAPI.cancelAppointment(appointmentId, 'Patient requested cancellation')
+
+          // Refresh appointments after successful deletion
+          await loadAppointments()
+
+          // Close modals if they were showing this appointment
+          if (showViewModal && selectedAppointment?.id === appointmentId) {
+              setShowViewModal(false)
+          }
+          if (showEditModal && selectedAppointment?.id === appointmentId) {
+              setShowEditModal(false)
+          }
       } catch (error) {
         console.error('Error deleting appointment:', error)
-        alert('Failed to delete appointment. Please try again.')
+          setError(error.response?.data?.message || 'Failed to delete appointment. Please try again.')
+      } finally {
+          setLoading(false)
       }
     }
   }
@@ -263,25 +249,27 @@ export default function BookAppointment() {
   const handleUpdateAppointment = async (e) => {
     e.preventDefault()
     setLoading(true)
+      setError(null)
     
     try {
-      // Mock update
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      const updatedAppointments = appointments.map(apt => 
-        apt.id === selectedAppointment.id 
-          ? { ...apt, ...editForm }
-          : apt
-      )
-      setAppointments(updatedAppointments)
-      localStorage.setItem(`patientAppointments_${user.id}`, JSON.stringify(updatedAppointments))
+        // Update appointment via API
+        const updatePayload = {
+            appointmentDate: editForm.date,
+            appointmentTime: editForm.time,
+            type: editForm.type,
+            reason: editForm.reason
+        }
+
+        await appointmentsAPI.updateAppointment(selectedAppointment.id, updatePayload)
+
+        // Refresh appointments after successful update
+        await loadAppointments()
       
       setShowEditModal(false)
       setSelectedAppointment(null)
-      alert('Appointment updated successfully!')
     } catch (error) {
       console.error('Update failed:', error)
-      alert('Failed to update appointment. Please try again.')
+        setError(error.response?.data?.message || 'Failed to update appointment. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -297,6 +285,16 @@ export default function BookAppointment() {
 
   return (
     <div className="p-6">
+        {/* Error Message */}
+        {error && (
+            <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-500 mr-2"/>
+                    <p className="text-red-800 dark:text-red-200">{error}</p>
+                </div>
+            </div>
+        )}
+      
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">

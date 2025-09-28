@@ -1,24 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { 
-  Plus, 
-  Eye, 
-  Edit, 
-  Download, 
-  Trash2, 
-  Upload, 
-  FileText, 
-  Image, 
-  File,
-  Save,
-  X
-} from 'lucide-react'
-import { patientAPI } from '../../services/api'
+import React, {useEffect, useState} from 'react'
+import {AlertCircle, Download, Edit, Eye, File, FileText, Image, Plus, Save, Trash2, Upload, X} from 'lucide-react'
+import {reportsAPI} from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 const MedicalReports = () => {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
@@ -44,41 +32,15 @@ const MedicalReports = () => {
 
   const loadReports = async () => {
     setLoading(true)
+      setError(null)
     try {
-      const response = await patientAPI.getReports()
-      setReports(response.data.reports)
+        const response = await reportsAPI.getReports()
+        setReports(response.data.reports || [])
     } catch (error) {
       console.error('Error loading reports:', error)
-      // Use mock data when API fails
-      setReports([
-        {
-          id: '1',
-          title: 'Blood Test Results',
-          type: 'lab',
-          status: 'completed',
-          testDate: '2024-01-15',
-          reportDate: '2024-01-16',
-          description: 'Complete blood count and lipid panel',
-          files: [
-            { name: 'blood_test.pdf', type: 'pdf', size: 245760 },
-            { name: 'lab_results.jpg', type: 'image', size: 189440 }
-          ],
-          tags: ['blood test', 'lab work']
-        },
-        {
-          id: '2',
-          title: 'X-Ray Report',
-          type: 'imaging',
-          status: 'completed',
-          testDate: '2024-01-10',
-          reportDate: '2024-01-11',
-          description: 'Chest X-ray examination',
-          files: [
-            { name: 'chest_xray.jpg', type: 'image', size: 512000 }
-          ],
-          tags: ['x-ray', 'chest']
-        }
-      ])
+        setError(error.response?.data?.message || 'Failed to load reports. Please try again.')
+        // Still set reports to an empty array if API fails
+        setReports([])
     } finally {
       setLoading(false)
     }
@@ -87,16 +49,29 @@ const MedicalReports = () => {
   const handleUpload = async (e) => {
     e.preventDefault()
     setLoading(true)
+      setError(null)
     try {
-      // Mock upload
-      await new Promise(resolve => setTimeout(resolve, 2000))
+        // Prepare upload data
+        const uploadData = {
+            title: uploadForm.title,
+            type: uploadForm.type,
+            description: uploadForm.description,
+            testDate: uploadForm.testDate,
+            files: uploadForm.files // In a real app, we'd upload files via multipart/form-data
+        }
+
+        // Upload report via API
+        await reportsAPI.create(uploadData)
+
+        // Close modal and reset form
       setShowUploadModal(false)
       setUploadForm({ title: '', type: 'lab', description: '', testDate: '', files: [] })
-      loadReports()
-      alert('Report uploaded successfully!')
+
+        // Refresh reports after successful upload
+        await loadReports()
     } catch (error) {
       console.error('Upload failed:', error)
-      alert('Upload failed. Please try again.')
+        setError(error.response?.data?.message || 'Upload failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -122,15 +97,25 @@ const MedicalReports = () => {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+      setError(null)
     try {
-      // Mock update
-      await new Promise(resolve => setTimeout(resolve, 1500))
+        // Prepare update data
+        const updateData = {
+            title: updateForm.title,
+            type: updateForm.type,
+            description: updateForm.description,
+            testDate: updateForm.testDate
+        }
+
+        // Update report via API
+        await reportsAPI.updateReport(selectedReport.id, updateData)
+
+        // Close modal and refresh reports
       setShowUpdateModal(false)
-      loadReports()
-      alert('Report updated successfully!')
+        await loadReports()
     } catch (error) {
       console.error('Update failed:', error)
-      alert('Update failed. Please try again.')
+        setError(error.response?.data?.message || 'Update failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -139,14 +124,24 @@ const MedicalReports = () => {
   const handleDeleteReport = async (reportId) => {
     if (window.confirm('Are you sure you want to delete this report?')) {
       setLoading(true)
+        setError(null)
       try {
-        // Mock delete
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        setReports(reports.filter(report => report.id !== reportId))
-        alert('Report deleted successfully!')
+          // Delete report via API
+          await reportsAPI.deleteReport(reportId)
+
+          // Refresh reports after successful deletion
+          await loadReports()
+
+          // Close modals if they were showing this report
+          if (showViewModal && selectedReport?.id === reportId) {
+              setShowViewModal(false)
+          }
+          if (showUpdateModal && selectedReport?.id === reportId) {
+              setShowUpdateModal(false)
+          }
       } catch (error) {
         console.error('Delete failed:', error)
-        alert('Delete failed. Please try again.')
+          setError(error.response?.data?.message || 'Delete failed. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -252,6 +247,16 @@ const MedicalReports = () => {
 
   return (
     <div className="p-6">
+        {/* Error Message */}
+        {error && (
+            <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-500 mr-2"/>
+                    <p className="text-red-800 dark:text-red-200">{error}</p>
+                </div>
+            </div>
+        )}
+      
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">

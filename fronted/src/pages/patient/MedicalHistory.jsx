@@ -1,31 +1,14 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { 
-  ArrowLeft,
-  User,
-  Calendar,
-  FileText,
-  Pill,
-  Clock,
-  Stethoscope,
-  Phone,
-  Mail,
-  MapPin,
-  Heart,
-  Eye,
-  Download
-} from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
+import React, {useEffect, useState} from 'react'
+import {AlertCircle, Calendar, Clock, Download, Eye, FileText, Pill, Stethoscope, User} from 'lucide-react'
+import {appointmentsAPI, patientAPI, prescriptionsAPI, reportsAPI} from '../../services/api'
 
 const MedicalHistory = () => {
   const [activeTab, setActiveTab] = useState('appointments')
   const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
   const [appointments, setAppointments] = useState([])
   const [prescriptions, setPrescriptions] = useState([])
   const [reports, setReports] = useState([])
-  const { user } = useAuth()
-
-  // Load patient data from localStorage or API
   const [patientInfo, setPatientInfo] = useState({
     name: "Loading...",
     email: "Loading...",
@@ -63,6 +46,7 @@ const MedicalHistory = () => {
 
   const loadData = async () => {
     setLoading(true)
+      setError(null)
     try {
       // Load all data in parallel
       await Promise.all([
@@ -73,6 +57,7 @@ const MedicalHistory = () => {
       ])
     } catch (error) {
       console.error('Error loading medical history:', error)
+        setError(error.response?.data?.message || 'Failed to load medical history. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -80,38 +65,37 @@ const MedicalHistory = () => {
 
   const loadPatientInfo = async () => {
     try {
-      // Load patient info from localStorage or API
-      const savedPatientInfo = localStorage.getItem('patientInfo')
-      if (savedPatientInfo) {
-        const patientData = JSON.parse(savedPatientInfo)
-        setPatientInfo(patientData)
-      } else {
-        // Use user data from auth context
+        // Load patient info from API
+        const response = await patientAPI.getProfile()
+        const userData = response.data.user
         setPatientInfo({
-          name: user?.name || "User",
-          email: user?.email || "user@example.com",
-          dateOfBirth: "Not provided",
-          gender: "Not provided",
-          bloodGroup: "Not provided",
-          phone: "Not provided",
-          address: "Not provided"
+            name: `${userData.profile?.firstName || ''} ${userData.profile?.lastName || ''}`.trim() || "User",
+            email: userData.email || "user@example.com",
+            dateOfBirth: userData.profile?.dateOfBirth || "Not provided",
+            gender: userData.profile?.gender || "Not provided",
+            bloodGroup: userData.profile?.bloodGroup || "Not provided",
+            phone: userData.profile?.phone || "Not provided",
+            address: userData.profile?.address || "Not provided"
         })
-      }
     } catch (error) {
-      console.error('Error loading patient info:', error)
+        console.error('Error loading patient info:', error)
+        setPatientInfo({
+            name: user?.name || "User",
+            email: user?.email || "user@example.com",
+            dateOfBirth: "Not provided",
+            gender: "Not provided",
+            bloodGroup: "Not provided",
+            phone: "Not provided",
+            address: "Not provided"
+        })
     }
   }
 
   const loadAppointments = async () => {
     try {
-      // Load appointments from localStorage
-      const savedAppointments = localStorage.getItem('patientAppointments')
-      if (savedAppointments) {
-        const appointmentsData = JSON.parse(savedAppointments)
-        setAppointments(appointmentsData)
-      } else {
-        setAppointments([])
-      }
+        // Load appointments from API
+        const response = await appointmentsAPI.getAppointments()
+        setAppointments(response.data.appointments || [])
     } catch (error) {
       console.error('Error loading appointments:', error)
       setAppointments([])
@@ -120,14 +104,9 @@ const MedicalHistory = () => {
 
   const loadPrescriptions = async () => {
     try {
-      // Load prescriptions from localStorage
-      const savedPrescriptions = localStorage.getItem('patientPrescriptions')
-      if (savedPrescriptions) {
-        const prescriptionsData = JSON.parse(savedPrescriptions)
-        setPrescriptions(prescriptionsData)
-      } else {
-        setPrescriptions([])
-      }
+        // Load prescriptions from API
+        const response = await prescriptionsAPI.getPrescriptions()
+        setPrescriptions(response.data.prescriptions || [])
     } catch (error) {
       console.error('Error loading prescriptions:', error)
       setPrescriptions([])
@@ -136,26 +115,20 @@ const MedicalHistory = () => {
 
   const loadReports = async () => {
     try {
-      // Load reports from localStorage
-      const savedReports = localStorage.getItem('patientReports')
-      if (savedReports) {
-        const reportsData = JSON.parse(savedReports)
+        // Load reports from API
+        const response = await reportsAPI.getReports()
         // Transform data to match Medical History format
-        const transformedReports = reportsData.map(report => ({
-          id: report.id,
-          title: report.title,
-          type: report.type,
-          date: report.testDate,
-          doctor: 'System',
-          status: 'Available',
-          description: report.description,
-          files: report.files || [] // Include files data
+        const transformedReports = (response.data.reports || []).map(report => ({
+            id: report.id,
+            title: report.title,
+            type: report.type,
+            date: report.testDate || report.createdAt,
+            doctor: report.doctorName || 'System',
+            status: report.status,
+            description: report.description,
+            files: report.files || [] // Include files data
         }))
         setReports(transformedReports)
-      } else {
-        // Default data if no reports
-        setReports([])
-      }
     } catch (error) {
       console.error('Error loading reports:', error)
       setReports([])
@@ -394,6 +367,17 @@ const MedicalHistory = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
 
       <div className="p-6">
+          {/* Error Message */}
+          {error && (
+              <div
+                  className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                  <div className="flex items-center">
+                      <AlertCircle className="h-5 w-5 text-red-500 mr-2"/>
+                      <p className="text-red-800 dark:text-red-200">{error}</p>
+                  </div>
+              </div>
+          )}
+        
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Medical History</h1>

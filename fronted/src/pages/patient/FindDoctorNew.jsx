@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Search, Star, MapPin, Clock, DollarSign, Phone, Video, User, ArrowLeft } from 'lucide-react'
-import { doctorsAPI } from '../../services/api'
-import LoadingSpinner from '../../components/LoadingSpinner'
+import React, {useEffect, useState} from 'react'
+import {Link} from 'react-router-dom'
+import {AlertCircle, ArrowLeft, Clock, DollarSign, MapPin, Phone, Search, Star, User, Video} from 'lucide-react'
+import {doctorsAPI} from '../../services/api'
 
 const FindDoctorNew = () => {
   const [doctors, setDoctors] = useState([])
   const [allDoctors, setAllDoctors] = useState([])
   const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [filteredDoctors, setFilteredDoctors] = useState([])
@@ -24,47 +24,20 @@ const FindDoctorNew = () => {
 
   const loadDoctors = async () => {
     setLoading(true)
+      setError(null)
     try {
-      // First try to load from localStorage (registered doctors)
-      const registeredDoctors = JSON.parse(localStorage.getItem('registeredDoctors') || '[]');
-      console.log('Found registered doctors:', registeredDoctors);
-      
-      if (registeredDoctors.length > 0) {
-        const formattedDoctors = registeredDoctors.map(doctor => ({
-          id: doctor.id,
-          firstName: doctor.profile?.firstName || 'Unknown',
-          lastName: doctor.profile?.lastName || 'Doctor',
-          specialization: doctor.specialization || 'General Medicine',
-          rating: doctor.rating?.average || 0,
-          experience: doctor.experience || 0,
-          consultationFee: doctor.consultationFee || 0,
-          location: doctor.profile?.location || 'Not specified',
-          availability: 'Available Today',
-          consultationTypes: doctor.profile?.consultationTypes || ['in_person'], 
-          languages: doctor.languages || ['English'],
-          _id: doctor.id,
-          bio: doctor.bio || '',
-          licenseNumber: doctor.licenseNumber || '',
-          isVerified: doctor.isVerified || false
-        }));
-        
-        console.log('Formatted doctors:', formattedDoctors);
-        setAllDoctors(formattedDoctors)
-        setDoctors(formattedDoctors)
-      } else {
-        // If no registered doctors, try API
+        // Load doctors from API
         const params = {
-          ...searchParams,
-          q: searchTerm || undefined
+            ...searchParams,
+            q: searchTerm || undefined
         }
-        
+
         const response = await doctorsAPI.search(params)
         setAllDoctors(response.data.doctors || [])
         setDoctors(response.data.doctors || [])
-      }
     } catch (error) {
       console.error('Error loading doctors:', error)
-      // If both localStorage and API fail, show empty state
+        setError(error.response?.data?.message || 'Failed to load doctors. Please try again.')
       setAllDoctors([])
       setDoctors([])
     } finally {
@@ -96,37 +69,36 @@ const FindDoctorNew = () => {
     }
   }
 
-  const handleSearchChange = (e) => {
+    const handleSearchChange = async (e) => {
     const value = e.target.value
     setSearchTerm(value)
     
     if (value.length > 0) {
-      const filtered = allDoctors.filter(doctor => 
-        doctor.firstName.toLowerCase().includes(value.toLowerCase()) ||
-        doctor.lastName.toLowerCase().includes(value.toLowerCase()) ||
-        doctor.specialization.toLowerCase().includes(value.toLowerCase()) ||
-        `${doctor.firstName} ${doctor.lastName}`.toLowerCase().includes(value.toLowerCase())
-      )
-      setFilteredDoctors(filtered)
-      setShowDropdown(true)
+        try {
+            // Search for doctors from API when user types
+            const response = await doctorsAPI.search({q: value, limit: 10})
+            setFilteredDoctors(response.data.doctors || [])
+            setShowDropdown(true)
+        } catch (error) {
+            console.error('Error searching for doctors:', error)
+            setFilteredDoctors([])
+            setShowDropdown(true)
+        }
     } else {
       setShowDropdown(false)
       setFilteredDoctors([])
     }
   }
 
-  const handleSearch = (e) => {
+    const handleSearch = async (e) => {
     e.preventDefault()
     if (searchTerm.length > 0) {
-      const filtered = allDoctors.filter(doctor => 
-        doctor.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doctor.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        `${doctor.firstName} ${doctor.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      setDoctors(filtered)
+        setSearchParams(prev => ({...prev, q: searchTerm}))
     } else {
-      setDoctors(allDoctors)
+        setSearchParams(prev => {
+            const {q, ...rest} = prev;
+            return rest
+        })
     }
     setShowDropdown(false)
   }
@@ -157,6 +129,16 @@ const FindDoctorNew = () => {
 
   return (
     <div className="p-6">
+        {/* Error Message */}
+        {error && (
+            <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-500 mr-2"/>
+                    <p className="text-red-800 dark:text-red-200">{error}</p>
+                </div>
+            </div>
+        )}
+      
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
