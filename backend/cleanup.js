@@ -3,8 +3,6 @@ require('dotenv').config();
 
 // Import models
 const User = require('./models/User');
-const Doctor = require('./models/Doctor');
-const Patient = require('./models/Patient');
 const Appointment = require('./models/Appointment');
 const Prescription = require('./models/Prescription');
 const Review = require('./models/Review');

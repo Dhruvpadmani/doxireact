@@ -1,59 +1,9 @@
-import { useState, useEffect } from 'react'
-import { 
-  Calendar, 
-  FileText, 
-  Stethoscope, 
-  Star, 
-  Clock,
-  TrendingUp,
-  Activity,
-  Menu,
-  X,
-  Heart,
-  MessageCircle,
-  ArrowLeft
-} from 'lucide-react'
+import {useEffect, useState} from 'react'
+import {Activity, Calendar, FileText, Heart, Menu, MessageCircle, Star, Stethoscope, X} from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import {patientAPI} from '../services/api'
 
-// Demo data for patient dashboard
-const generateDemoPatientData = () => {
-  return {
-    statistics: {
-      upcomingAppointments: 2,
-      totalAppointments: 8,
-      totalPrescriptions: 5,
-      totalReports: 3
-    },
-    recent: {
-      appointments: [
-        {
-          appointmentId: 'APT000001',
-          doctorId: { specialization: 'Cardiologist' },
-          appointmentDate: '2024-01-15T10:00:00Z',
-          status: 'confirmed'
-        },
-        {
-          appointmentId: 'APT000002',
-          doctorId: { specialization: 'Dermatologist' },
-          appointmentDate: '2024-01-12T14:30:00Z',
-          status: 'completed'
-        }
-      ],
-      prescriptions: [
-        {
-          medications: [{ name: 'Metformin 500mg' }],
-          doctorId: { specialization: 'Cardiologist' },
-          status: 'active'
-        },
-        {
-          medications: [{ name: 'Lisinopril 10mg' }],
-          doctorId: { specialization: 'Cardiologist' },
-          status: 'active'
-        }
-      ]
-    }
-  }
-}
+// Removed demo data - now fetching real patient data from API
 
 export default function PatientDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -67,12 +17,41 @@ export default function PatientDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setDashboardData(generateDemoPatientData())
+      const response = await patientAPI.getDashboard()
+
+      if (response.data) {
+        console.log('PatientDashboard: Dashboard data loaded successfully')
+        setDashboardData(response.data)
+      } else {
+        console.log('PatientDashboard: No dashboard data found')
+        setDashboardData({
+          statistics: {
+            upcomingAppointments: 0,
+            totalAppointments: 0,
+            totalPrescriptions: 0,
+            totalReports: 0
+          },
+          recent: {
+            appointments: [],
+            prescriptions: [],
+            reports: []
+          }
+        })
+      }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
-      setDashboardData(generateDemoPatientData())
+      setDashboardData({
+        statistics: {
+          upcomingAppointments: 0,
+          totalAppointments: 0,
+          totalPrescriptions: 0,
+          totalReports: 0
+        },
+        recent: {
+          appointments: [],
+          prescriptions: []
+        }
+      })
     } finally {
       setLoading(false)
     }

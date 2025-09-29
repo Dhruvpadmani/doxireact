@@ -1,35 +1,32 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  TrendingUp,
-  Calendar,
-  Users,
-  UserCheck,
-  FileText,
-  Star,
+import React, {useCallback, useEffect, useState} from 'react';
+import {
   Activity,
-  Download,
-  Filter,
-  BarChart3,
-  PieChart,
-  CalendarDays,
-  DollarSign,
-  Clock,
   AlertTriangle,
-  Plus,
-  Save,
-  Edit,
-  Trash2,
-  Eye,
+  BarChart3,
+  Calendar,
+  CalendarDays,
   CheckCircle as CheckCircleIcon,
-  X,
-  Settings,
+  Clock,
   Database,
+  DollarSign,
+  Edit,
+  Eye,
+  FileText,
+  Filter,
   Monitor,
-  Globe,
+  PieChart,
+  Plus,
+  RefreshCw,
+  Save,
   Search,
-  RefreshCw
+  Settings,
+  Star,
+  Trash2,
+  TrendingUp,
+  UserCheck,
+  Users,
+  X
 } from 'lucide-react';
-import LoadingSpinner from '../../components/LoadingSpinner';
 
 const ReportsAnalytics = () => {
   // Props destructuring (none for this component)
@@ -73,54 +70,55 @@ const ReportsAnalytics = () => {
     try {
       setLoading(true);
       setError(null);
-      // Sample analytics data
-      const mockData = {
-        totalUsers: 1250,
-        totalDoctors: 156,
-        totalAppointments: 2450,
-        totalReviews: 980,
-        totalReports: 642,
-        activeToday: 234,
-        revenue: 125000,
-        growthRate: 12.5,
-        mostBookedDoctor: 'Dr. John Smith',
-        busiestSlot: '10:00 AM',
-        peakDay: 'Wednesday',
-        dailyAppointments: [
-          { date: '2024-01-01', count: 45 },
-          { date: '2024-01-02', count: 52 },
-          { date: '2024-01-03', count: 38 },
-          { date: '2024-01-04', count: 67 },
-          { date: '2024-01-05', count: 55 },
-          { date: '2024-01-06', count: 72 },
-          { date: '2024-01-07', count: 61 }
-        ],
-        topDoctors: [
-          { name: 'Dr. John Smith', appointments: 156, rating: 4.8 },
-          { name: 'Dr. Sarah Johnson', appointments: 142, rating: 4.7 },
-          { name: 'Dr. Michael Chen', appointments: 128, rating: 4.9 },
-          { name: 'Dr. Priya Patel', appointments: 112, rating: 4.6 },
-          { name: 'Dr. Robert Wilson', appointments: 98, rating: 4.5 }
-        ],
-        userGrowth: [
-          { month: 'Jan', users: 120, doctors: 15 },
-          { month: 'Feb', users: 145, doctors: 18 },
-          { month: 'Mar', users: 178, doctors: 22 },
-          { month: 'Apr', users: 210, doctors: 25 },
-          { month: 'May', users: 256, doctors: 28 },
-          { month: 'Jun', users: 298, doctors: 32 }
-        ]
+
+      // Fetch real analytics data from backend
+      const response = await adminAPI.getDashboard();
+      const dashboardData = response.data;
+
+      // Transform dashboard data to analytics format
+      const analyticsData = {
+        totalUsers: dashboardData.statistics.total.users,
+        totalDoctors: dashboardData.statistics.total.doctors,
+        totalAppointments: dashboardData.statistics.total.appointments,
+        totalReviews: dashboardData.statistics.total.reviews,
+        totalReports: dashboardData.statistics.total.reports,
+        activeToday: dashboardData.statistics.appointments.pending,
+        revenue: 0, // TODO: Add revenue calculation when available
+        growthRate: 0, // TODO: Add growth rate calculation when available
+        mostBookedDoctor: 'N/A', // TODO: Add most booked doctor calculation
+        busiestSlot: 'N/A', // TODO: Add busiest slot calculation
+        peakDay: 'N/A', // TODO: Add peak day calculation
+        dailyAppointments: [], // TODO: Add daily appointments data
+        topDoctors: [], // TODO: Add top doctors data
+        userGrowth: [] // TODO: Add user growth data
       };
-      
-      setAnalyticsData(mockData);
+
+      setAnalyticsData(analyticsData);
       setChartsData({
-        dailyAppointments: mockData.dailyAppointments,
-        topDoctors: mockData.topDoctors,
-        userGrowth: mockData.userGrowth
+        dailyAppointments: analyticsData.dailyAppointments,
+        topDoctors: analyticsData.topDoctors,
+        userGrowth: analyticsData.userGrowth
       });
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
       setError('Failed to load analytics data');
+      // Set empty data to prevent blank page
+      setAnalyticsData({
+        totalUsers: 0,
+        totalDoctors: 0,
+        totalAppointments: 0,
+        totalReviews: 0,
+        totalReports: 0,
+        activeToday: 0,
+        revenue: 0,
+        growthRate: 0,
+        mostBookedDoctor: 'N/A',
+        busiestSlot: 'N/A',
+        peakDay: 'N/A',
+        dailyAppointments: [],
+        topDoctors: [],
+        userGrowth: []
+      });
     } finally {
       setLoading(false);
     }

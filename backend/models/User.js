@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+    // Authentication & Identification
   email: {
     type: String,
     required: true,
@@ -25,13 +26,8 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'doctor', 'patient'],
     required: true
   },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  lastLogin: {
-    type: Date
-  },
+
+    // Common profile fields
   profile: {
     firstName: {
       type: String,
@@ -74,28 +70,115 @@ const userSchema = new mongoose.Schema({
       country: String
     }
   },
-  notifications: [{
-    type: {
+
+    // Role-based subdocuments (only populate relevant subdocument based on role)
+    patientData: {
+        patientId: {
       type: String,
-      enum: ['appointment', 'prescription', 'report', 'general'],
-      required: true
+            unique: true,
+            required: function () {
+                return this.role === 'patient';
+            }
+        },
+        emergencyContact: {
+            name: String,
+            relationship: String,
+            phone: String
     },
-    title: {
+        medicalHistory: [{
+            condition: String,
+            diagnosisDate: Date,
+            status: {type: String, enum: ['active', 'resolved', 'chronic'], default: 'active'},
+            notes: String
+        }],
+        allergies: [{
+            allergen: String,
+            severity: {type: String, enum: ['mild', 'moderate', 'severe']},
+            reaction: String
+        }],
+        medications: [{
+            name: String,
+            dosage: String,
+            frequency: String,
+            startDate: Date,
+            endDate: Date,
+            prescribedBy: {type: mongoose.Schema.Types.ObjectId, ref: 'User'}
+        }],
+        insurance: {
+            provider: String,
+            policyNumber: String,
+            groupNumber: String,
+            expiryDate: Date
+        },
+        preferences: {
+            preferredLanguage: {type: String, default: 'en'},
+            communicationMethod: {type: String, enum: ['email', 'sms', 'phone'], default: 'email'},
+            reminderSettings: {
+                appointmentReminders: {type: Boolean, default: true},
+                medicationReminders: {type: Boolean, default: true}
+            }
+        }
+    },
+
+    doctorData: {
+        doctorId: {
       type: String,
-      required: true
+            unique: true,
+            required: function () {
+                return this.role === 'doctor';
+            }
     },
-    message: {
-      type: String,
-      required: true
+        licenseNumber: String,
+        specialization: String,
+        qualifications: [{
+            degree: String,
+            institution: String,
+            year: Number
+        }],
+        experience: {type: Number, min: 0},
+        consultationFee: {type: Number, min: 0},
+        bio: {type: String, maxlength: 1000},
+        languages: [String],
+        availability: [{
+            dayOfWeek: {
+                type: String,
+                enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+            },
+            startTime: String,
+            endTime: String,
+            isAvailable: {type: Boolean, default: true}
+        }],
+        holidays: [{
+            date: Date,
+            reason: String,
+            isRecurring: {type: Boolean, default: false}
+        }],
+        rating: {
+            average: {type: Number, default: 0, min: 0, max: 5},
+            count: {type: Number, default: 0}
     },
-    isRead: {
-      type: Boolean,
-      default: false
+        isVerified: {type: Boolean, default: false},
+        verificationDocuments: [{
+            type: {type: String, enum: ['license', 'degree', 'id_proof', 'other']},
+            url: String,
+            uploadedAt: {type: Date, default: Date.now}
+        }],
+        consultationTypes: [{
+            type: {type: String, enum: ['in_person', 'video', 'phone']},
+            fee: {type: Number, required: true},
+            duration: {type: Number, default: 30}
+        }]
     },
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
+
+    // Common fields
+    isActive: {type: Boolean, default: true},
+    lastLogin: Date,
+    notifications: [{
+        type: {type: String, enum: ['appointment', 'prescription', 'report', 'general']},
+        title: {type: String, required: true},
+        message: {type: String, required: true},
+        isRead: {type: Boolean, default: false},
+        createdAt: {type: Date, default: Date.now}
   }]
 }, {
   timestamps: true
@@ -139,9 +222,15 @@ userSchema.methods.updateDoctorRating = async function () {
     ]);
 
     if (stats.length > 0) {
+        if (!this.doctorData) this.doctorData = {};
+        if (!this.doctorData.rating) this.doctorData.rating = {};
+        
         this.doctorData.rating.average = Math.round(stats[0].averageRating * 10) / 10;
         this.doctorData.rating.count = stats[0].totalReviews;
     } else {
+        if (!this.doctorData) this.doctorData = {};
+        if (!this.doctorData.rating) this.doctorData.rating = {};
+        
         this.doctorData.rating.average = 0;
         this.doctorData.rating.count = 0;
     }
@@ -152,10 +241,18 @@ userSchema.methods.updateDoctorRating = async function () {
 // Generate patient/doctor ID before saving
 userSchema.pre('validate', async function (next) {
     if (this.isNew) {
-        if (this.role === 'patient' && !this.patientData.patientId) {
+        if (this.role === 'patient' && (!this.patientData || !this.patientData.patientId)) {
+            // Initialize patientData if it doesn't exist
+            if (!this.patientData) {
+                this.patientData = {};
+            }
             const count = await mongoose.model('User').countDocuments({role: 'patient'});
             this.patientData.patientId = `PAT${String(count + 1).padStart(6, '0')}`;
-        } else if (this.role === 'doctor' && !this.doctorData.doctorId) {
+        } else if (this.role === 'doctor' && (!this.doctorData || !this.doctorData.doctorId)) {
+            // Initialize doctorData if it doesn't exist
+            if (!this.doctorData) {
+                this.doctorData = {};
+            }
             const count = await mongoose.model('User').countDocuments({role: 'doctor'});
             this.doctorData.doctorId = `DOC${String(count + 1).padStart(6, '0')}`;
         }

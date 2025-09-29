@@ -59,26 +59,22 @@ router.post('/register', [
       email,
       password,
       role,
-      profile
-      };
-
-      // Add role-specific data
-    if (role === 'patient') {
-        userData.patientData = {
+        profile,
+        // Initialize the appropriate subdocument based on role, others will be undefined
+        patientData: role === 'patient' ? {
         emergencyContact: {
           name: profile.emergencyContact?.name || '',
           relationship: profile.emergencyContact?.relationship || '',
           phone: profile.emergencyContact?.phone || ''
         }
-        };
-    } else if (role === 'doctor') {
-        userData.doctorData = {
+        } : undefined,
+        doctorData: role === 'doctor' ? {
         licenseNumber: profile.licenseNumber || '',
         specialization: profile.specialization || '',
         experience: profile.experience || 0,
         consultationFee: profile.consultationFee || 0
-        };
-    }
+        } : undefined
+      };
 
       const user = new User(userData);
       await user.save();

@@ -1,123 +1,29 @@
-import { useState, useEffect } from 'react'
-import { 
-  Calendar, 
-  Clock, 
-  User, 
-  Stethoscope, 
-  FileText, 
-  Search,
-  CheckCircle,
+import {useEffect, useState} from 'react'
+import {
+  Activity,
   AlertCircle,
   ArrowLeft,
-  MapPin,
-  Star,
-  Phone,
-  Video,
-  Monitor,
-  X,
-  Activity,
-  MessageCircle,
   Bot,
-  Heart
+  Calendar,
+  CheckCircle,
+  Clock,
+  FileText,
+  Heart,
+  MapPin,
+  MessageCircle,
+  Monitor,
+  Phone,
+  Search,
+  Star,
+  Stethoscope,
+  User,
+  Video,
+  X
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import {appointmentsAPI, doctorsAPI} from '../services/api'
 
-// Demo data for doctors
-const demoDoctors = [
-  {
-    _id: '1',
-    specialization: 'Cardiologist',
-    experience: 15,
-    bio: 'Expert in heart diseases and cardiovascular treatments with over 15 years of experience.',
-    consultationFee: 1500,
-    languages: ['English', 'Hindi', 'Gujarati'],
-    rating: { average: 4.8, count: 120 },
-    isVerified: true,
-    consultationTypes: [
-      { type: 'in_person', fee: 1500, duration: 30 },
-      { type: 'video', fee: 1200, duration: 30 },
-      { type: 'phone', fee: 1000, duration: 20 }
-    ],
-    availableTypes: ['in_person', 'video', 'phone']
-  },
-  {
-    _id: '2',
-    specialization: 'Dermatologist',
-    experience: 12,
-    bio: 'Specialized in skin, hair, and nail conditions. Expert in cosmetic dermatology.',
-    consultationFee: 1200,
-    languages: ['English', 'Hindi'],
-    rating: { average: 4.6, count: 95 },
-    isVerified: true,
-    consultationTypes: [
-      { type: 'in_person', fee: 1200, duration: 30 },
-      { type: 'video', fee: 1000, duration: 25 }
-    ],
-    availableTypes: ['in_person', 'video']
-  },
-  {
-    _id: '3',
-    specialization: 'Pediatrician',
-    experience: 18,
-    bio: 'Caring for children from birth to adolescence. Expert in child health and development.',
-    consultationFee: 1000,
-    languages: ['English', 'Hindi', 'Gujarati'],
-    rating: { average: 4.9, count: 200 },
-    isVerified: true,
-    consultationTypes: [
-      { type: 'in_person', fee: 1000, duration: 30 },
-      { type: 'video', fee: 800, duration: 25 },
-      { type: 'phone', fee: 600, duration: 20 }
-    ],
-    availableTypes: ['in_person', 'video', 'phone']
-  },
-  {
-    _id: '4',
-    specialization: 'Orthopedist',
-    experience: 20,
-    bio: 'Expert in bone, joint, and muscle disorders. Specialized in sports medicine.',
-    consultationFee: 1800,
-    languages: ['English', 'Hindi'],
-    rating: { average: 4.7, count: 150 },
-    isVerified: true,
-    consultationTypes: [
-      { type: 'in_person', fee: 1800, duration: 45 },
-      { type: 'video', fee: 1500, duration: 30 }
-    ],
-    availableTypes: ['in_person', 'video']
-  },
-  {
-    _id: '5',
-    specialization: 'Gynecologist',
-    experience: 14,
-    bio: 'Specialized in women\'s health, pregnancy, and reproductive health issues.',
-    consultationFee: 1300,
-    languages: ['English', 'Hindi', 'Gujarati'],
-    rating: { average: 4.8, count: 180 },
-    isVerified: true,
-    consultationTypes: [
-      { type: 'in_person', fee: 1300, duration: 30 },
-      { type: 'video', fee: 1100, duration: 25 }
-    ],
-    availableTypes: ['in_person', 'video']
-  },
-  {
-    _id: '6',
-    specialization: 'Psychiatrist',
-    experience: 16,
-    bio: 'Expert in mental health, anxiety, depression, and behavioral disorders.',
-    consultationFee: 2000,
-    languages: ['English', 'Hindi'],
-    rating: { average: 4.9, count: 90 },
-    isVerified: true,
-    consultationTypes: [
-      { type: 'in_person', fee: 2000, duration: 60 },
-      { type: 'video', fee: 1800, duration: 45 },
-      { type: 'phone', fee: 1500, duration: 30 }
-    ],
-    availableTypes: ['in_person', 'video', 'phone']
-  }
-]
+// Removed demo data - now fetching real doctors from API
 
 // Generate available time slots
 const generateTimeSlots = (startTime = '09:00', endTime = '17:00') => {
@@ -144,7 +50,7 @@ const generateTimeSlots = (startTime = '09:00', endTime = '17:00') => {
 
 export default function BookAppointment() {
   const [step, setStep] = useState(1) // 1: Select Doctor, 2: Select Date/Time, 3: Appointment Details, 4: Confirmation
-  const [doctors, setDoctors] = useState(demoDoctors)
+  const [doctors, setDoctors] = useState([])
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [availableSlots, setAvailableSlots] = useState([])
   const [selectedDate, setSelectedDate] = useState('')
@@ -167,24 +73,53 @@ export default function BookAppointment() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    // Simulate loading doctors
-    setLoading(true)
-    setTimeout(() => {
-      setDoctors(demoDoctors)
-      setLoading(false)
-    }, 1000)
+    fetchDoctors()
   }, [])
+
+  const fetchDoctors = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const response = await doctorsAPI.searchDoctors({
+        limit: 50,
+        sortBy: 'rating',
+        sortOrder: 'desc'
+      })
+
+      if (response.data && response.data.doctors) {
+        console.log('BookAppointment: Doctors loaded successfully:', response.data.doctors.length)
+        setDoctors(response.data.doctors)
+      } else {
+        console.log('BookAppointment: No doctors found')
+        setDoctors([])
+      }
+    } catch (error) {
+      console.error('Failed to fetch doctors:', error)
+      setError('Failed to load doctors. Please try again.')
+      setDoctors([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const fetchAvailableSlots = async (doctorId, date) => {
     try {
       setLoading(true)
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500))
-      const slots = generateTimeSlots()
-      setAvailableSlots(slots)
+
+      const response = await doctorsAPI.getAvailableSlots(doctorId, date, selectedDoctor?.doctorData?.consultationTypes?.[0]?.type || 'in_person')
+
+      if (response.data && response.data.availableSlots) {
+        console.log('BookAppointment: Available slots loaded successfully:', response.data.availableSlots.length)
+        setAvailableSlots(response.data.availableSlots)
+      } else {
+        console.log('BookAppointment: No available slots found')
+        setAvailableSlots([])
+      }
     } catch (error) {
       console.error('Failed to fetch available slots:', error)
       setError('Failed to load available time slots.')
+      setAvailableSlots([])
     } finally {
       setLoading(false)
     }
@@ -234,43 +169,30 @@ export default function BookAppointment() {
     try {
       setLoading(true)
       setError('')
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Generate appointment ID
-      const appointmentId = `APT${String(Date.now()).slice(-6)}`
-      
-      // Store appointment in localStorage for demo purposes
-      const appointment = {
-        id: appointmentId,
+
+      // Prepare appointment data
+      const appointmentDataToSend = {
         doctorId: selectedDoctor._id,
-        doctorName: selectedDoctor.specialization,
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
         type: appointmentData.type,
         reason: appointmentData.reason,
         symptoms: appointmentData.symptoms,
         duration: appointmentData.duration,
-        notes: appointmentData.notes,
-        patientName: appointmentData.patientName,
-        patientEmail: appointmentData.patientEmail,
-        patientPhone: appointmentData.patientPhone,
-        status: 'scheduled',
-        payment: {
-          amount: selectedDoctor.consultationFee,
-          status: 'pending'
-        },
-        createdAt: new Date().toISOString()
+        notes: appointmentData.notes
       }
-      
-      // Save to localStorage
-      const existingAppointments = JSON.parse(localStorage.getItem('demoAppointments') || '[]')
-      existingAppointments.push(appointment)
-      localStorage.setItem('demoAppointments', JSON.stringify(existingAppointments))
-      
-      setSuccess(true)
-      setStep(4)
+
+      console.log('BookAppointment: Booking appointment with data:', appointmentDataToSend)
+
+      const response = await appointmentsAPI.book(appointmentDataToSend)
+
+      if (response.data) {
+        console.log('BookAppointment: Appointment booked successfully:', response.data)
+        setSuccess(true)
+        setStep(4)
+      } else {
+        throw new Error('No response data received')
+      }
     } catch (error) {
       console.error('Failed to book appointment:', error)
       setError('Failed to book appointment. Please try again.')

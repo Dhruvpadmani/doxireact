@@ -8,6 +8,7 @@ const Review = require('../models/Review');
 const Notification = require('../models/Notification');
 const EmergencyRequest = require('../models/EmergencyRequest');
 const AdminLog = require('../models/AdminLog');
+const Settings = require('../models/Settings');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -592,6 +593,335 @@ router.get('/logs', async (req, res) => {
     console.error('Get admin logs error:', error);
     res.status(500).json({
       message: 'Failed to fetch admin logs',
+      error: error.message
+    });
+  }
+});
+
+// Settings Management
+// Get all settings
+router.get('/settings', async (req, res) => {
+  try {
+    const {page = 1, limit = 10, category, status, search} = req.query;
+    const query = {};
+
+    if (category) query.category = category;
+    if (status) query.status = status;
+    if (search) {
+      query.$or = [
+        {name: {$regex: search, $options: 'i'}},
+        {description: {$regex: search, $options: 'i'}}
+      ];
+    }
+
+    const settings = await Settings.find(query)
+        .populate('createdBy', 'email profile')
+        .populate('updatedBy', 'email profile')
+        .sort({category: 1, name: 1})
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+
+    const total = await Settings.countDocuments(query);
+
+    res.json({
+      settings,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(500).json({
+      message: 'Failed to fetch settings',
+      error: error.message
+    });
+  }
+});
+
+// Get single setting
+router.get('/settings/:id', async (req, res) => {
+  try {
+    const setting = await Settings.findById(req.params.id)
+        .populate('createdBy', 'email profile')
+        .populate('updatedBy', 'email profile');
+
+    if (!setting) {
+      return res.status(404).json({
+        message: 'Setting not found',
+        code: 'SETTING_NOT_FOUND'
+      });
+    }
+
+    res.json({setting});
+  } catch (error) {
+    console.error('Get setting error:', error);
+    res.status(500).json({
+      message: 'Failed to fetch setting',
+      error: error.message
+    });
+  }
+});
+
+// Create new setting
+router.post('/settings', [
+  body('name').notEmpty().withMessage('Setting name is required'),
+  body('category').isIn(['general', 'appointments', 'email', 'system', 'backup', 'api', 'security', 'notifications', 'users', 'reports']).withMessage('Invalid category'),
+  body('value').notEmpty().withMessage('Setting value is required'),
+  body('type').isIn(['string', 'number', 'boolean', 'password', 'select', 'json']).withMessage('Invalid type'),
+  body('description').notEmpty().withMessage('Description is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const {
+      name,
+      category,
+      value,
+      type,
+      description,
+      isRequired,
+      isEncrypted,
+      defaultValue,
+      validation,
+      tags
+    } = req.body;
+
+    // Check if setting with same name already exists
+    const existingSetting = await Settings.findOne({name});
+    if (existingSetting) {
+      return res.status(400).json({
+        message: 'Setting with this name already exists',
+        code: 'SETTING_EXISTS'
+      });
+    }
+
+    const setting = new Settings({
+      name,
+      category,
+      value,
+      type,
+      description,
+      isRequired: isRequired || false,
+      isEncrypted: isEncrypted || false,
+      defaultValue: defaultValue || '',
+      validation: validation || '',
+      tags: tags || [],
+      createdBy: req.user._id
+    });
+
+    await setting.save();
+
+    // Log admin action
+    await AdminLog.logAction(req.user._id, 'setting_created', {
+      targetType: 'setting',
+      targetId: setting._id,
+      details: {
+        after: {name, category, type},
+        changes: [`Setting '${name}' created`]
+      }
+    });
+
+    res.status(201).json({
+      message: 'Setting created successfully',
+      setting
+    });
+  } catch (error) {
+    console.error('Create setting error:', error);
+    res.status(500).json({
+      message: 'Failed to create setting',
+      error: error.message
+    });
+  }
+});
+
+// Update setting
+router.put('/settings/:id', [
+  body('name').optional().notEmpty().withMessage('Setting name cannot be empty'),
+  body('category').optional().isIn(['general', 'appointments', 'email', 'system', 'backup', 'api', 'security', 'notifications', 'users', 'reports']).withMessage('Invalid category'),
+  body('value').optional().notEmpty().withMessage('Setting value cannot be empty'),
+  body('type').optional().isIn(['string', 'number', 'boolean', 'password', 'select', 'json']).withMessage('Invalid type'),
+  body('description').optional().notEmpty().withMessage('Description cannot be empty')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const setting = await Settings.findById(req.params.id);
+    if (!setting) {
+      return res.status(404).json({
+        message: 'Setting not found',
+        code: 'SETTING_NOT_FOUND'
+      });
+    }
+
+    const oldData = {
+      name: setting.name,
+      category: setting.category,
+      value: setting.value,
+      type: setting.type,
+      description: setting.description
+    };
+
+    // Update fields
+    const updateFields = ['name', 'category', 'value', 'type', 'description', 'isRequired', 'isEncrypted', 'defaultValue', 'validation', 'tags'];
+    updateFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        setting[field] = req.body[field];
+      }
+    });
+
+    setting.updatedBy = req.user._id;
+    await setting.save();
+
+    // Log admin action
+    await AdminLog.logAction(req.user._id, 'setting_updated', {
+      targetType: 'setting',
+      targetId: setting._id,
+      details: {
+        before: oldData,
+        after: {
+          name: setting.name,
+          category: setting.category,
+          value: setting.value,
+          type: setting.type,
+          description: setting.description
+        },
+        changes: [`Setting '${setting.name}' updated`]
+      }
+    });
+
+    res.json({
+      message: 'Setting updated successfully',
+      setting
+    });
+  } catch (error) {
+    console.error('Update setting error:', error);
+    res.status(500).json({
+      message: 'Failed to update setting',
+      error: error.message
+    });
+  }
+});
+
+// Delete setting
+router.delete('/settings/:id', async (req, res) => {
+  try {
+    const setting = await Settings.findById(req.params.id);
+    if (!setting) {
+      return res.status(404).json({
+        message: 'Setting not found',
+        code: 'SETTING_NOT_FOUND'
+      });
+    }
+
+    // Log admin action before deletion
+    await AdminLog.logAction(req.user._id, 'setting_deleted', {
+      targetType: 'setting',
+      targetId: setting._id,
+      details: {
+        before: {
+          name: setting.name,
+          category: setting.category,
+          type: setting.type
+        },
+        changes: [`Setting '${setting.name}' deleted`]
+      }
+    });
+
+    await Settings.findByIdAndDelete(req.params.id);
+
+    res.json({
+      message: 'Setting deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete setting error:', error);
+    res.status(500).json({
+      message: 'Failed to delete setting',
+      error: error.message
+    });
+  }
+});
+
+// Get settings by category
+router.get('/settings/category/:category', async (req, res) => {
+  try {
+    const {category} = req.params;
+    const settings = await Settings.getByCategory(category);
+    res.json({settings});
+  } catch (error) {
+    console.error('Get settings by category error:', error);
+    res.status(500).json({
+      message: 'Failed to fetch settings by category',
+      error: error.message
+    });
+  }
+});
+
+// Get setting value by name
+router.get('/settings/name/:name', async (req, res) => {
+  try {
+    const {name} = req.params;
+    const value = await Settings.getSetting(name);
+    res.json({name, value});
+  } catch (error) {
+    console.error('Get setting by name error:', error);
+    res.status(500).json({
+      message: 'Failed to fetch setting by name',
+      error: error.message
+    });
+  }
+});
+
+// Set setting value by name
+router.put('/settings/name/:name', [
+  body('value').notEmpty().withMessage('Value is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const {name} = req.params;
+    const {value} = req.body;
+
+    const setting = await Settings.setSetting(name, value, req.user._id);
+
+    // Log admin action
+    await AdminLog.logAction(req.user._id, 'setting_value_updated', {
+      targetType: 'setting',
+      targetId: setting._id,
+      details: {
+        before: {name, oldValue: setting.value},
+        after: {name, newValue: value},
+        changes: [`Setting '${name}' value updated`]
+      }
+    });
+
+    res.json({
+      message: 'Setting value updated successfully',
+      setting
+    });
+  } catch (error) {
+    console.error('Set setting value error:', error);
+    res.status(500).json({
+      message: 'Failed to update setting value',
       error: error.message
     });
   }

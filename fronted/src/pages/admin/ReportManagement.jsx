@@ -1,18 +1,24 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {
+  AlertTriangle,
+  Calendar,
   Check,
+  CheckCircle,
   Clock,
   Download,
   Edit,
   Eye,
+  FileCheck,
   FileText,
+  FileX,
   Mail,
   Plus,
   Save,
   Search,
   Stethoscope,
   Trash2,
-  Upload
+  Upload,
+  X
 } from 'lucide-react';
 import {adminAPI, reportsAPI} from '../../services/api';
 
@@ -68,6 +74,8 @@ const ReportManagement = () => {
         import('react-hot-toast').then((toast) => {
             toast.error('Failed to load reports. Please check your connection and try again.');
         });
+      // Set empty reports array to prevent blank page
+      setReports([]);
     } finally {
       setLoading(false);
     }
@@ -79,12 +87,16 @@ const ReportManagement = () => {
         const patientsResponse = await adminAPI.getUsers({role: 'patient'});
         if (patientsResponse.data && patientsResponse.data.users) {
             setPatients(patientsResponse.data.users);
+        } else {
+          setPatients([]);
         }
 
         // Fetch doctors
         const doctorsResponse = await adminAPI.getDoctors();
         if (doctorsResponse.data && doctorsResponse.data.doctors) {
             setDoctors(doctorsResponse.data.doctors);
+        } else {
+          setDoctors([]);
         }
     } catch (error) {
       console.error('Failed to fetch patients and doctors:', error);
@@ -92,6 +104,9 @@ const ReportManagement = () => {
         import('react-hot-toast').then((toast) => {
             toast.error('Failed to load patients and doctors. Please check your connection and try again.');
         });
+      // Set empty arrays to prevent blank page
+      setPatients([]);
+      setDoctors([]);
     }
   }, []);
 
@@ -340,7 +355,7 @@ const ReportManagement = () => {
       {/* Success/Error Messages */}
       {success && (
         <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3">
-          <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400"/>
           <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
           <button
             onClick={() => setSuccess(null)}
@@ -679,7 +694,7 @@ const ReportManagement = () => {
                     </div>
                     <div>
                       <h5 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                        <CalendarIcon className="h-4 w-4" />
+                        <Calendar className="h-4 w-4"/>
                         Additional Information
                       </h5>
                       <div className="space-y-2">

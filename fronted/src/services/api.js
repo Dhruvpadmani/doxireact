@@ -98,6 +98,16 @@ export const adminAPI = {
     api.put(`/admin/reviews/${id}/moderate`, { status, reason }),
   getEmergencyRequests: (params) => api.get('/admin/emergency-requests', { params }),
   getLogs: (params) => api.get('/admin/logs', { params }),
+
+  // Settings Management
+  getSettings: (params) => api.get('/admin/settings', {params}),
+  getSetting: (id) => api.get(`/admin/settings/${id}`),
+  createSetting: (settingData) => api.post('/admin/settings', settingData),
+  updateSetting: (id, settingData) => api.put(`/admin/settings/${id}`, settingData),
+  deleteSetting: (id) => api.delete(`/admin/settings/${id}`),
+  getSettingsByCategory: (category) => api.get(`/admin/settings/category/${category}`),
+  getSettingByName: (name) => api.get(`/admin/settings/name/${name}`),
+  setSettingValue: (name, value) => api.put(`/admin/settings/name/${name}`, {value}),
 }
 
 // Doctor API
@@ -138,6 +148,18 @@ export const patientAPI = {
   createEmergencyRequest: (requestData) => 
     api.post('/patient/emergency', requestData),
   getEmergencyRequests: (params) => api.get('/patient/emergency-requests', { params }),
+}
+
+// Public Doctors API (no authentication required)
+export const doctorsAPI = {
+  getDoctors: (params) => api.get('/doctors', {params}),
+  getDoctor: (id) => api.get(`/doctors/${id}`),
+  searchDoctors: (params) => api.get('/doctors/search', {params}),
+  getFilterOptions: () => api.get('/doctors/filter-options'),
+  getAvailableSlots: (doctorId, date, consultationType) =>
+      api.get(`/doctors/${doctorId}/available-slots`, {
+        params: {date, consultationType}
+      }),
 }
 
 // Appointments API

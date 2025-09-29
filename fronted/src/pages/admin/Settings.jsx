@@ -1,46 +1,33 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Settings as SettingsIcon,
-  Save,
-  Edit,
-  Trash2,
-  Plus,
-  X,
-  CheckCircle as CheckCircleIcon,
+import React, {useCallback, useEffect, useState} from 'react';
+import {
+  Activity,
   AlertTriangle,
-  Database,
-  Shield,
-  Globe,
-  Mail,
   Bell,
   Calendar,
-  Users,
-  FileText,
-  Lock,
-  Monitor,
-  Smartphone,
-  Server,
-  Cloud,
-  Key,
+  CheckCircle as CheckCircleIcon,
+  Clock,
+  Database,
+  Download,
+  Edit,
   Eye,
   EyeOff,
+  FileText,
+  Globe,
+  Key,
+  Lock,
+  Mail,
+  Plus,
   RefreshCw,
-  Download,
-  Upload,
+  Save,
   Search,
-  Filter,
-  Clock,
-  Activity,
-  BarChart3,
-  PieChart,
-  TrendingUp,
-  Zap,
-  Wifi,
-  HardDrive,
-  Cpu,
-  MemoryStick
+  Server,
+  Settings as SettingsIcon,
+  Shield,
+  Trash2,
+  Upload,
+  Users,
+  X
 } from 'lucide-react';
-import LoadingSpinner from '../../components/LoadingSpinner';
 
 const AdminSettings = () => {
   // Props destructuring (none for this component)
@@ -79,119 +66,32 @@ const AdminSettings = () => {
   // Functions
   const fetchSettings = useCallback(async () => {
     try {
+      console.log('AdminSettings: Starting to fetch settings...');
       setLoading(true);
       setError(null);
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const sampleSettings = [
-        {
-          id: '1',
-          name: 'app_name',
-          category: 'general',
-          value: 'DOXI Medical Platform',
-          type: 'string',
-          description: 'The name of the medical platform application',
-          isRequired: true,
-          isEncrypted: false,
-          defaultValue: 'DOXI Medical Platform',
-          validation: 'min:3,max:50',
-          tags: ['branding', 'display'],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          status: 'active'
-        },
-        {
-          id: '2',
-          name: 'max_appointments_per_day',
-          category: 'appointments',
-          value: '50',
-          type: 'number',
-          description: 'Maximum number of appointments allowed per day per doctor',
-          isRequired: true,
-          isEncrypted: false,
-          defaultValue: '50',
-          validation: 'min:1,max:100',
-          tags: ['limits', 'appointments'],
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          updatedAt: new Date(Date.now() - 3600000).toISOString(),
-          status: 'active'
-        },
-        {
-          id: '3',
-          name: 'smtp_password',
-          category: 'email',
-          value: 'encrypted_password_here',
-          type: 'password',
-          description: 'SMTP server password for sending emails',
-          isRequired: true,
-          isEncrypted: true,
-          defaultValue: '',
-          validation: 'required',
-          tags: ['email', 'smtp', 'security'],
-          createdAt: new Date(Date.now() - 172800000).toISOString(),
-          updatedAt: new Date(Date.now() - 7200000).toISOString(),
-          status: 'active'
-        },
-        {
-          id: '4',
-          name: 'maintenance_mode',
-          category: 'system',
-          value: 'false',
-          type: 'boolean',
-          description: 'Enable or disable maintenance mode for the system',
-          isRequired: false,
-          isEncrypted: false,
-          defaultValue: 'false',
-          validation: 'boolean',
-          tags: ['maintenance', 'system'],
-          createdAt: new Date(Date.now() - 259200000).toISOString(),
-          updatedAt: new Date(Date.now() - 10800000).toISOString(),
-          status: 'active'
-        },
-        {
-          id: '5',
-          name: 'backup_frequency',
-          category: 'backup',
-          value: 'daily',
-          type: 'select',
-          description: 'Frequency of automatic database backups',
-          isRequired: true,
-          isEncrypted: false,
-          defaultValue: 'daily',
-          validation: 'in:daily,weekly,monthly',
-          tags: ['backup', 'database', 'automation'],
-          createdAt: new Date(Date.now() - 345600000).toISOString(),
-          updatedAt: new Date(Date.now() - 14400000).toISOString(),
-          status: 'active'
-        },
-        {
-          id: '6',
-          name: 'api_rate_limit',
-          category: 'api',
-          value: '1000',
-          type: 'number',
-          description: 'Maximum API requests per hour per user',
-          isRequired: true,
-          isEncrypted: false,
-          defaultValue: '1000',
-          validation: 'min:100,max:10000',
-          tags: ['api', 'rate-limit', 'security'],
-          createdAt: new Date(Date.now() - 432000000).toISOString(),
-          updatedAt: new Date(Date.now() - 18000000).toISOString(),
-          status: 'active'
+
+      const response = await adminAPI.getSettings();
+      if (response.data && response.data.settings) {
+        console.log('AdminSettings: Settings loaded successfully:', response.data.settings.length);
+        setSettings(response.data.settings);
+      } else {
+        console.log('AdminSettings: No settings found, returning empty array');
+        setSettings([]);
         }
-      ];
-      setSettings(sampleSettings);
     } catch (error) {
       console.error('Failed to fetch settings:', error);
       setError('Failed to load settings');
+      // Set empty settings array to prevent blank page
+      setSettings([]);
     } finally {
+      console.log('AdminSettings: Loading completed');
       setLoading(false);
     }
   }, []);
 
   // useEffects
   useEffect(() => {
+    console.log('AdminSettings: Component mounted, fetching settings...');
     fetchSettings();
   }, [fetchSettings]);
 
@@ -365,7 +265,7 @@ const AdminSettings = () => {
 
   const getCategoryIcon = (category) => {
     const icons = {
-      general: Settings,
+      general: SettingsIcon,
       appointments: Calendar,
       email: Mail,
       system: Server,
@@ -376,7 +276,7 @@ const AdminSettings = () => {
       users: Users,
       reports: FileText
     };
-    return icons[category] || Settings;
+    return icons[category] || SettingsIcon;
   };
 
   const getTypeColor = (type) => {
@@ -644,7 +544,7 @@ const AdminSettings = () => {
                 <tr>
                   <td colSpan="6" className="table-cell text-center py-8 text-gray-500 dark:text-gray-400">
                     <div className="flex flex-col items-center gap-2">
-                      <Settings className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
+                      <SettingsIcon className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400"/>
                       <p className="text-sm sm:text-base">No settings found</p>
                     </div>
                   </td>

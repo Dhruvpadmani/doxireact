@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const Doctor = require('../models/Doctor');
+const User = require('../models/User');
+const Appointment = require('../models/Appointment');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -9,27 +10,27 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, specialization, search } = req.query;
-    const query = {};
+      const query = {role: 'doctor'};
 
     if (specialization) {
-      query.specialization = new RegExp(specialization, 'i');
+        query['doctorData.specialization'] = new RegExp(specialization, 'i');
     }
 
     if (search) {
       query.$or = [
-        { firstName: new RegExp(search, 'i') },
-        { lastName: new RegExp(search, 'i') },
-        { specialization: new RegExp(search, 'i') }
+          {'profile.firstName': new RegExp(search, 'i')},
+          {'profile.lastName': new RegExp(search, 'i')},
+          {'doctorData.specialization': new RegExp(search, 'i')}
       ];
     }
 
-    const doctors = await Doctor.find(query)
+      const doctors = await User.find(query)
       .select('-password')
       .limit(limit * 1)
       .skip((page - 1) * limit)
-      .sort({ rating: -1 });
+          .sort({'doctorData.rating.average': -1});
 
-    const total = await Doctor.countDocuments(query);
+      const total = await User.countDocuments(query);
 
     res.json({
       doctors,
@@ -43,28 +44,6 @@ router.get('/', async (req, res) => {
     console.error('Get doctors error:', error);
     res.status(500).json({
       message: 'Failed to fetch doctors',
-      error: error.message
-    });
-  }
-});
-
-// Get single doctor
-router.get('/:id', async (req, res) => {
-  try {
-    const doctor = await Doctor.findById(req.params.id).select('-password');
-
-    if (!doctor) {
-      return res.status(404).json({
-        message: 'Doctor not found',
-        code: 'DOCTOR_NOT_FOUND'
-      });
-    }
-
-    res.json({ doctor });
-  } catch (error) {
-    console.error('Get doctor error:', error);
-    res.status(500).json({
-      message: 'Failed to fetch doctor',
       error: error.message
     });
   }
@@ -89,58 +68,54 @@ router.get('/search', async (req, res) => {
     } = req.query;
 
     // Build query
-    const query = {};
+      const query = {role: 'doctor'};
     
     if (searchTerm) {
       query.$or = [
-        { firstName: new RegExp(searchTerm, 'i') },
-        { lastName: new RegExp(searchTerm, 'i') },
-        { specialization: new RegExp(searchTerm, 'i') },
-        { 'userId.profile.firstName': new RegExp(searchTerm, 'i') },
-        { 'userId.profile.lastName': new RegExp(searchTerm, 'i') }
+          {'profile.firstName': new RegExp(searchTerm, 'i')},
+          {'profile.lastName': new RegExp(searchTerm, 'i')},
+          {'doctorData.specialization': new RegExp(searchTerm, 'i')}
       ];
     }
 
     if (q) { // For backward compatibility
       query.$or = [
-        { firstName: new RegExp(q, 'i') },
-        { lastName: new RegExp(q, 'i') },
-        { specialization: new RegExp(q, 'i') },
-        { 'userId.profile.firstName': new RegExp(q, 'i') },
-        { 'userId.profile.lastName': new RegExp(q, 'i') }
+          {'profile.firstName': new RegExp(q, 'i')},
+          {'profile.lastName': new RegExp(q, 'i')},
+          {'doctorData.specialization': new RegExp(q, 'i')}
       ];
     }
 
     if (specialization) {
-      query.specialization = new RegExp(specialization, 'i');
+        query['doctorData.specialization'] = new RegExp(specialization, 'i');
     }
 
     if (rating) {
-      query.rating = { $gte: parseFloat(rating) };
+        query['doctorData.rating.average'] = {$gte: parseFloat(rating)};
     }
 
     if (consultationType) {
-      query['consultationTypes.type'] = consultationType;
+        query['doctorData.consultationTypes.type'] = consultationType;
     }
 
     if (language) {
-      query.languages = { $in: [language] };
+        query['doctorData.languages'] = {$in: [language]};
     }
 
     if (minFee || maxFee) {
-      query.consultationFee = {};
-      if (minFee) query.consultationFee.$gte = parseFloat(minFee);
-      if (maxFee) query.consultationFee.$lte = parseFloat(maxFee);
+        query['doctorData.consultationFee'] = {};
+        if (minFee) query['doctorData.consultationFee'].$gte = parseFloat(minFee);
+        if (maxFee) query['doctorData.consultationFee'].$lte = parseFloat(maxFee);
     }
 
     // Determine sort order
     const sort = {};
     if (sortBy === 'fee') {
-      sort.consultationFee = sortOrder === 'asc' ? 1 : -1;
+        sort['doctorData.consultationFee'] = sortOrder === 'asc' ? 1 : -1;
     } else if (sortBy === 'experience') {
-      sort.experience = sortOrder === 'asc' ? 1 : -1;
+        sort['doctorData.experience'] = sortOrder === 'asc' ? 1 : -1;
     } else { // Default to rating
-      sort.rating = sortOrder === 'asc' ? 1 : -1;
+        sort['doctorData.rating.average'] = sortOrder === 'asc' ? 1 : -1;
     }
 
     // Calculate pagination
@@ -149,13 +124,12 @@ router.get('/search', async (req, res) => {
 
     // Execute query
     const [doctors, total] = await Promise.all([
-      Doctor.find(query)
+        User.find(query)
         .select('-password')
-        .populate('userId', 'profile')
         .sort(sort)
         .skip(skip)
         .limit(limitNum),
-      Doctor.countDocuments(query)
+        User.countDocuments(query)
     ]);
 
     // Get filter options for the client
@@ -180,6 +154,28 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// Get single doctor
+router.get('/:id', async (req, res) => {
+    try {
+        const doctor = await User.findById(req.params.id).select('-password');
+
+        if (!doctor || doctor.role !== 'doctor') {
+            return res.status(404).json({
+                message: 'Doctor not found',
+                code: 'DOCTOR_NOT_FOUND'
+            });
+        }
+
+        res.json({doctor});
+    } catch (error) {
+        console.error('Get doctor error:', error);
+        res.status(500).json({
+            message: 'Failed to fetch doctor',
+            error: error.message
+        });
+    }
+});
+
 // Get filter options for the frontend
 router.get('/filter-options', async (req, res) => {
   try {
@@ -202,9 +198,9 @@ router.get('/filter-options', async (req, res) => {
 // Helper function to get filter options
 async function getFilterOptions() {
   try {
-    const specializations = await Doctor.distinct('specialization');
-    const languages = await Doctor.distinct('languages');
-    const consultationTypes = await Doctor.distinct('consultationTypes.type');
+      const specializations = await User.distinct('doctorData.specialization', {role: 'doctor'});
+      const languages = await User.distinct('doctorData.languages', {role: 'doctor'});
+      const consultationTypes = await User.distinct('doctorData.consultationTypes.type', {role: 'doctor'});
     
     return {
       specializations: specializations.filter(Boolean),
@@ -219,6 +215,164 @@ async function getFilterOptions() {
       consultationTypes: []
     };
   }
+}
+
+// Get available time slots for a doctor on a specific date
+router.get('/:id/available-slots', async (req, res) => {
+    try {
+        const {id} = req.params;
+        const {date, consultationType = 'in_person'} = req.query;
+
+        if (!date) {
+            return res.status(400).json({
+                message: 'Date is required',
+                code: 'DATE_REQUIRED'
+            });
+        }
+
+        // Validate date format
+        const requestedDate = new Date(date);
+        if (isNaN(requestedDate.getTime())) {
+            return res.status(400).json({
+                message: 'Invalid date format',
+                code: 'INVALID_DATE'
+            });
+        }
+
+        // Check if date is in the past
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (requestedDate < today) {
+            return res.status(400).json({
+                message: 'Cannot book appointments for past dates',
+                code: 'PAST_DATE'
+            });
+        }
+
+        // Get doctor
+        const doctor = await User.findById(id).select('-password');
+        if (!doctor || doctor.role !== 'doctor') {
+            return res.status(404).json({
+                message: 'Doctor not found',
+                code: 'DOCTOR_NOT_FOUND'
+            });
+        }
+
+        // Check if doctor has the requested consultation type
+        const consultationTypeData = doctor.doctorData.consultationTypes.find(
+            ct => ct.type === consultationType
+        );
+        if (!consultationTypeData) {
+            return res.status(400).json({
+                message: 'Doctor does not offer this consultation type',
+                code: 'CONSULTATION_TYPE_NOT_AVAILABLE'
+            });
+        }
+
+        // Get day of week
+        const dayOfWeek = requestedDate.toLocaleDateString('en-US', {weekday: 'long'}).toLowerCase();
+
+        // Check if doctor is available on this day
+        const dayAvailability = doctor.doctorData.availability.find(
+            av => av.dayOfWeek === dayOfWeek && av.isAvailable
+        );
+
+        if (!dayAvailability) {
+            return res.json({
+                availableSlots: [],
+                message: 'Doctor is not available on this day'
+            });
+        }
+
+        // Check if it's a holiday
+        const isHoliday = doctor.doctorData.holidays.some(holiday => {
+            const holidayDate = new Date(holiday.date);
+            return holidayDate.toDateString() === requestedDate.toDateString();
+        });
+
+        if (isHoliday) {
+            return res.json({
+                availableSlots: [],
+                message: 'Doctor is on holiday on this date'
+            });
+        }
+
+        // Generate time slots
+        const slots = generateTimeSlots(
+            dayAvailability.startTime,
+            dayAvailability.endTime,
+            consultationTypeData.duration
+        );
+
+        // Get existing appointments for this date
+        const existingAppointments = await Appointment.find({
+            doctorId: id,
+            appointmentDate: {
+                $gte: new Date(requestedDate.setHours(0, 0, 0, 0)),
+                $lt: new Date(requestedDate.setHours(23, 59, 59, 999))
+            },
+            status: {$in: ['confirmed', 'in_progress']}
+        });
+
+        // Filter out booked slots
+        const bookedSlots = existingAppointments.map(apt => {
+            const aptDate = new Date(apt.appointmentDate);
+            return aptDate.toTimeString().slice(0, 5); // HH:MM format
+        });
+
+        const availableSlots = slots.filter(slot => !bookedSlots.includes(slot.time));
+
+        res.json({
+            availableSlots,
+            consultationType: consultationTypeData,
+            doctor: {
+                id: doctor._id,
+                name: `${doctor.profile.firstName} ${doctor.profile.lastName}`,
+                specialization: doctor.doctorData.specialization
+            }
+        });
+    } catch (error) {
+        console.error('Get available slots error:', error);
+        res.status(500).json({
+            message: 'Failed to fetch available slots',
+            error: error.message
+        });
+    }
+});
+
+// Helper function to generate time slots
+function generateTimeSlots(startTime, endTime, duration) {
+    const slots = [];
+    const start = parseTime(startTime);
+    const end = parseTime(endTime);
+
+    let current = start;
+    while (current < end) {
+        const slotEnd = new Date(current.getTime() + duration * 60000);
+        if (slotEnd <= end) {
+            slots.push({
+                time: formatTime(current),
+                endTime: formatTime(slotEnd),
+                duration: duration
+            });
+        }
+        current = slotEnd;
+    }
+
+    return slots;
+}
+
+// Helper function to parse time string (HH:MM) to Date object
+function parseTime(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+}
+
+// Helper function to format Date object to time string (HH:MM)
+function formatTime(date) {
+    return date.toTimeString().slice(0, 5);
 }
 
 module.exports = router;

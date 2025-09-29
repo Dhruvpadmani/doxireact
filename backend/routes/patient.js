@@ -1,7 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
 const Prescription = require('../models/Prescription');
 const Report = require('../models/Report');
@@ -233,24 +232,24 @@ router.get('/dashboard', async (req, res) => {
 router.get('/doctors', async (req, res) => {
   try {
     const { page = 1, limit = 10, specialization, search, minRating } = req.query;
-    const query = { isVerified: true };
+    const query = {role: 'doctor', 'doctorData.isVerified': true};
 
-    if (specialization) query.specialization = specialization;
-    if (minRating) query['rating.average'] = { $gte: parseFloat(minRating) };
+    if (specialization) query['doctorData.specialization'] = specialization;
+    if (minRating) query['doctorData.rating.average'] = {$gte: parseFloat(minRating)};
     if (search) {
       query.$or = [
-        { specialization: { $regex: search, $options: 'i' } },
-        { bio: { $regex: search, $options: 'i' } }
+        {'doctorData.specialization': {$regex: search, $options: 'i'}},
+        {'doctorData.bio': {$regex: search, $options: 'i'}}
       ];
     }
 
-    const doctors = await Doctor.find(query)
-        .populate('userId', 'email profile')
-        .sort({'rating.average': -1, 'rating.count': -1})
+    const doctors = await User.find(query)
+        .select('email profile doctorData')
+        .sort({'doctorData.rating.average': -1, 'doctorData.rating.count': -1})
         .limit(limit * 1)
         .skip((page - 1) * limit);
 
-    const total = await Doctor.countDocuments(query);
+    const total = await User.countDocuments(query);
 
     res.json({
       doctors,
@@ -272,10 +271,9 @@ router.get('/doctors', async (req, res) => {
 // Get doctor details
 router.get('/doctors/:id', async (req, res) => {
   try {
-    const doctor = await Doctor.findById(req.params.id)
-        .populate('userId', 'email profile');
+    const doctor = await User.findById(req.params.id);
 
-    if (!doctor || !doctor.isVerified) {
+    if (!doctor || doctor.role !== 'doctor' || !doctor.doctorData.isVerified) {
       return res.status(404).json({
         message: 'Doctor not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -287,7 +285,7 @@ router.get('/doctors/:id', async (req, res) => {
       doctorId: doctor._id,
       status: 'approved'
     })
-        .populate('patientId', 'patientId')
+        .populate('patientId', 'patientData.patientId')
         .sort({createdAt: -1})
         .limit(10);
 
