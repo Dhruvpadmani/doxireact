@@ -10,18 +10,18 @@ export default function DoctorSettings() {
   const [showPassword, setShowPassword] = useState(false)
   const [activeTab, setActiveTab] = useState('profile')
   const [profile, setProfile] = useState({
-    firstName: 'Dr. John',
-    lastName: 'Smith',
-    email: 'john.smith@doxi.com',
-    phone: '+91 98765 43210',
-    specialization: 'Cardiology',
-    experience: '15 years',
-    qualification: 'MBBS, MD (Cardiology)',
-    licenseNumber: 'MED123456',
-    hospital: 'City Hospital',
-    address: '123 Medical Street, Mumbai, Maharashtra 400001',
-    bio: 'Experienced cardiologist with 15 years of practice. Specialized in heart diseases and preventive cardiology.',
-    consultationFee: 1500,
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    specialization: '',
+    experience: '',
+    qualification: '',
+    licenseNumber: '',
+    hospital: '',
+    address: '',
+    bio: '',
+    consultationFee: 0,
     availability: {
       monday: { start: '09:00', end: '17:00', available: true },
       tuesday: { start: '09:00', end: '17:00', available: true },
@@ -54,44 +54,51 @@ export default function DoctorSettings() {
   const fetchProfile = async () => {
     try {
       setLoading(true)
-        // Fetch real profile data from API
-        const response = await doctorAPI.getProfile()
-        if (response.data && response.data.user) {
-            const userData = response.data.user
-            setProfile({
-                firstName: userData.profile?.firstName || '',
-                lastName: userData.profile?.lastName || '',
-                email: userData.email || '',
-                phone: userData.profile?.phone || '',
-                specialization: userData.specialization || '',
-                experience: userData.experience || '',
-                qualification: userData.qualification || '',
-                licenseNumber: userData.licenseNumber || '',
-                hospital: userData.hospital || '',
-                address: userData.profile?.address || '',
-                bio: userData.profile?.bio || '',
-                consultationFee: userData.consultationFee || 0,
-                availability: userData.profile?.availability || {
-                    monday: {start: '09:00', end: '17:00', available: true},
-                    tuesday: {start: '09:00', end: '17:00', available: true},
-                    wednesday: {start: '09:00', end: '17:00', available: true},
-                    thursday: {start: '09:00', end: '17:00', available: true},
-                    friday: {start: '09:00', end: '17:00', available: true},
-                    saturday: {start: '09:00', end: '13:00', available: true},
-                    sunday: {start: '00:00', end: '00:00', available: false}
-                },
-                notifications: userData.profile?.notifications || {
-                    email: true,
-                    sms: true,
-                    push: true,
-                    appointmentReminders: true,
-                    patientMessages: true,
-                    systemUpdates: true
-                }
-            })
-        }
+      // Fetch real profile data from API
+      const response = await doctorAPI.getProfile()
+      if (response.data && response.data.user) {
+        const user = response.data.user
+        setProfile(prev => ({
+          ...prev,
+          firstName: user.profile?.firstName || user.firstName || prev.firstName,
+          lastName: user.profile?.lastName || user.lastName || prev.lastName,
+          email: user.email || prev.email,
+          phone: user.profile?.phone || user.phone || prev.phone,
+          specialization: user.specialization || prev.specialization,
+          experience: user.experience || prev.experience,
+          qualification: user.qualification || prev.qualification,
+          licenseNumber: user.licenseNumber || prev.licenseNumber,
+          hospital: user.hospital || prev.hospital,
+          address: user.profile?.address || user.address || prev.address,
+          bio: user.profile?.bio || user.bio || prev.bio,
+          consultationFee: user.consultationFee || user.fee || prev.consultationFee,
+          availability: user.profile?.availability || user.availability || prev.availability,
+          notifications: user.profile?.notifications || user.notifications || prev.notifications
+        }))
+      } else if (response.data) {
+        // Alternative response structure
+        const data = response.data;
+        setProfile(prev => ({
+          ...prev,
+          firstName: data.firstName || data.profile?.firstName || prev.firstName,
+          lastName: data.lastName || data.profile?.lastName || prev.lastName,
+          email: data.email || prev.email,
+          phone: data.phone || data.profile?.phone || prev.phone,
+          specialization: data.specialization || prev.specialization,
+          experience: data.experience || prev.experience,
+          qualification: data.qualification || prev.qualification,
+          licenseNumber: data.licenseNumber || prev.licenseNumber,
+          hospital: data.hospital || prev.hospital,
+          address: data.address || data.profile?.address || prev.address,
+          bio: data.bio || data.profile?.bio || prev.bio,
+          consultationFee: data.consultationFee || data.fee || prev.consultationFee,
+          availability: data.availability || data.profile?.availability || prev.availability,
+          notifications: data.notifications || data.profile?.notifications || prev.notifications
+        }))
+      }
     } catch (error) {
       console.error('Failed to fetch profile:', error)
+      // In case of error, retain the initial state but log the issue
     } finally {
       setLoading(false)
     }
@@ -269,6 +276,7 @@ export default function DoctorSettings() {
                         type="text"
                         value={profile.firstName}
                         onChange={(e) => setProfile(prev => ({ ...prev, firstName: e.target.value }))}
+                        placeholder="Enter your first name (e.g. John)"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -278,6 +286,7 @@ export default function DoctorSettings() {
                         type="text"
                         value={profile.lastName}
                         onChange={(e) => setProfile(prev => ({ ...prev, lastName: e.target.value }))}
+                        placeholder="Enter your last name (e.g. Smith)"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -287,6 +296,7 @@ export default function DoctorSettings() {
                         type="email"
                         value={profile.email}
                         onChange={(e) => setProfile(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="Enter your email address (e.g. doctor@example.com)"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -296,6 +306,7 @@ export default function DoctorSettings() {
                         type="tel"
                         value={profile.phone}
                         onChange={(e) => setProfile(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="Enter your phone number (e.g. +91 98765 43210)"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -312,6 +323,7 @@ export default function DoctorSettings() {
                         type="text"
                         value={profile.specialization}
                         onChange={(e) => setProfile(prev => ({ ...prev, specialization: e.target.value }))}
+                        placeholder="Enter your medical specialization (e.g. Cardiology, Orthopedics)"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -321,6 +333,7 @@ export default function DoctorSettings() {
                         type="text"
                         value={profile.experience}
                         onChange={(e) => setProfile(prev => ({ ...prev, experience: e.target.value }))}
+                        placeholder="Enter your years of experience (e.g. 10 years)"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -330,6 +343,7 @@ export default function DoctorSettings() {
                         type="text"
                         value={profile.qualification}
                         onChange={(e) => setProfile(prev => ({ ...prev, qualification: e.target.value }))}
+                        placeholder="Enter your qualifications (e.g. MBBS, MD, DM)"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -339,6 +353,7 @@ export default function DoctorSettings() {
                         type="text"
                         value={profile.licenseNumber}
                         onChange={(e) => setProfile(prev => ({ ...prev, licenseNumber: e.target.value }))}
+                        placeholder="Enter your medical license number"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -348,6 +363,7 @@ export default function DoctorSettings() {
                         type="text"
                         value={profile.hospital}
                         onChange={(e) => setProfile(prev => ({ ...prev, hospital: e.target.value }))}
+                        placeholder="Enter hospital/clinic name"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -357,6 +373,7 @@ export default function DoctorSettings() {
                         type="number"
                         value={profile.consultationFee}
                         onChange={(e) => setProfile(prev => ({ ...prev, consultationFee: parseInt(e.target.value) }))}
+                        placeholder="Enter consultation fee in INR"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -372,6 +389,7 @@ export default function DoctorSettings() {
                       <textarea
                         value={profile.address}
                         onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder="Enter your full address including street, city, state, and pin code"
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
@@ -381,6 +399,7 @@ export default function DoctorSettings() {
                       <textarea
                         value={profile.bio}
                         onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
+                        placeholder="Tell patients about yourself, your expertise, and approach to treatment (e.g. Experienced cardiologist specializing in preventive cardiology with 15 years of practice...)"
                         rows={4}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
@@ -539,6 +558,7 @@ export default function DoctorSettings() {
                           type={showPassword ? 'text' : 'password'}
                           value={passwordForm.currentPassword}
                           onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                          placeholder="Enter your current password"
                           className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         />
                         <button
@@ -556,6 +576,7 @@ export default function DoctorSettings() {
                         type="password"
                         value={passwordForm.newPassword}
                         onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                        placeholder="Enter your new password (at least 6 characters)"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -565,6 +586,7 @@ export default function DoctorSettings() {
                         type="password"
                         value={passwordForm.confirmPassword}
                         onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        placeholder="Confirm your new password"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       />
                     </div>

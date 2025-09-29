@@ -32,9 +32,10 @@ const FindDoctorNew = () => {
             q: searchTerm || undefined
         }
 
-        const response = await doctorsAPI.search(params)
+        const response = await doctorsAPI.getDoctors(params)
         setAllDoctors(response.data.doctors || [])
         setDoctors(response.data.doctors || [])
+        console.log("💕💕💕💕", response.data.doctors)
     } catch (error) {
       console.error('Error loading doctors:', error)
         setError(error.response?.data?.message || 'Failed to load doctors. Please try again.')
@@ -282,6 +283,7 @@ const FindDoctorNew = () => {
                       {doctor.availability}
                     </span>
                     <div className="flex items-center space-x-2">
+                      {/*  todo*/}
                       {doctor.consultationTypes.map((type, index) => (
                         <div key={index} className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                           {getConsultationIcon(type)}

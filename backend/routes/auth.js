@@ -87,7 +87,6 @@ router.post('/register', [
 
     res.status(201).json({
       message: 'User registered successfully',
-      // Don't send token in response for improved security
       user: {
         id: user._id,
         email: user.email,
@@ -106,74 +105,75 @@ router.post('/register', [
 
 // Login user
 router.post('/login', [
-  body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty()
+    body('email').isEmail().normalizeEmail(),
+    body('password').notEmpty()
 ], authRateLimit(5, 15 * 60 * 1000), async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                message: 'Validation failed',
+                errors: errors.array()
+            });
+        }
+
+        const { email, password } = req.body;
+
+        // Find user
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).json({
+                message: 'Invalid email or password',
+                code: 'INVALID_CREDENTIALS'
+            });
+        }
+
+        // Check if account is active
+        if (!user.isActive) {
+            return res.status(401).json({
+                message: 'Account is deactivated. Please contact support.',
+                code: 'ACCOUNT_DEACTIVATED'
+            });
+        }
+
+        // Verify password
+        const isPasswordValid = await user.comparePassword(password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                message: 'Invalid email or password',
+                code: 'INVALID_CREDENTIALS'
+            });
+        }
+
+        // Update last login
+        user.lastLogin = new Date();
+        await user.save();
+
+        // Generate token
+        const token = generateToken(user._id);
+
+        // Set token in cookie (for browser security)
+        setTokenCookie(res, token);
+
+        // Return token in response for frontend (also set in cookie for extra security)
+        res.json({
+            message: 'Login successful',
+            token: token, // Frontend needs this in the response
+            user: {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                profile: user.profile,
+                lastLogin: user.lastLogin
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({
+            message: 'Login failed',
+            error: error.message
+        });
     }
-
-    const { email, password } = req.body;
-
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({
-        message: 'Invalid email or password',
-        code: 'INVALID_CREDENTIALS'
-      });
-    }
-
-    // Check if account is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        message: 'Account is deactivated. Please contact support.',
-        code: 'ACCOUNT_DEACTIVATED'
-      });
-    }
-
-    // Verify password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        message: 'Invalid email or password',
-        code: 'INVALID_CREDENTIALS'
-      });
-    }
-
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
-
-    // Generate token
-    const token = generateToken(user._id);
-
-    // Set token in cookie instead of returning in response
-    setTokenCookie(res, token);
-
-    res.json({
-      message: 'Login successful',
-      // Don't send token in response for improved security
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-        profile: user.profile,
-        lastLogin: user.lastLogin
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      message: 'Login failed',
-      error: error.message
-    });
-  }
 });
 
 // Get current user profile

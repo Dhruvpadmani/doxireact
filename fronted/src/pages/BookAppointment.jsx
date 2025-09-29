@@ -205,7 +205,7 @@ export default function BookAppointment() {
     const matchesSearch = doctor.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          doctor.bio?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesSpecialization = !specializationFilter || doctor.specialization === specializationFilter
-    return matchesSearch && matchesSpecialization && doctor.isVerified
+    return matchesSearch && matchesSpecialization && doctor.doctorData?.isVerified
   })
 
   const specializations = [...new Set(doctors.map(doctor => doctor.specialization).filter(Boolean))]
@@ -410,10 +410,10 @@ export default function BookAppointment() {
                         </div>
                         <div className="ml-3">
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            Dr. {doctor.specialization}
+                            Dr. {doctor.doctorData?.specialization}
                           </h3>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {doctor.experience} years experience
+                            {doctor.doctorData?.experience} years experience
                           </p>
                         </div>
                       </div>
@@ -426,28 +426,28 @@ export default function BookAppointment() {
                     </div>
 
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
-                      {doctor.bio || 'No bio available'}
+                      {doctor.doctorData?.bio || 'No bio available'}
                     </p>
 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500 dark:text-gray-400">Consultation Fee</span>
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          ₹{doctor.consultationFee}
+                          ₹{doctor.doctorData?.consultationFee}
                         </span>
                       </div>
                       
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500 dark:text-gray-400">Languages</span>
                         <span className="text-sm text-gray-900 dark:text-white">
-                          {doctor.languages?.join(', ') || 'English'}
+                          {doctor.doctorData?.languages?.join(', ') || 'English'}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500 dark:text-gray-400">Available Types</span>
                         <div className="flex space-x-1">
-                          {doctor.consultationTypes?.map((type, index) => (
+                          {doctor.doctorData?.consultationTypes?.map((type, index) => (
                             <span key={index} className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                               {getTypeLabel(type.type)}
                             </span>
@@ -484,10 +484,10 @@ export default function BookAppointment() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Dr. {selectedDoctor.specialization}
+                      Dr. {selectedDoctor.doctorData?.specialization}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {selectedDoctor.experience} years experience • ₹{selectedDoctor.consultationFee}
+                      {selectedDoctor.doctorData?.experience} years experience • ₹{selectedDoctor.doctorData?.consultationFee}
                     </p>
                   </div>
                 </div>
@@ -558,7 +558,7 @@ export default function BookAppointment() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Doctor</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      Dr. {selectedDoctor?.specialization}
+                      Dr. {selectedDoctor?.doctorData?.specialization}
                     </p>
                   </div>
                   <div>
@@ -576,7 +576,7 @@ export default function BookAppointment() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Fee</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      ₹{selectedDoctor?.consultationTypes?.find(ct => ct.type === appointmentData.type)?.fee || selectedDoctor?.consultationFee}
+                      ₹{selectedDoctor?.doctorData?.consultationTypes?.find(ct => ct.type === appointmentData.type)?.fee || selectedDoctor?.doctorData?.consultationFee}
                     </p>
                   </div>
                 </div>
@@ -674,8 +674,8 @@ export default function BookAppointment() {
                       Consultation Type
                     </label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {selectedDoctor?.availableTypes?.map((type) => {
-                        const consultationType = selectedDoctor.consultationTypes?.find(ct => ct.type === type)
+                      {selectedDoctor?.doctorData?.consultationTypes?.map((consultationType) => {
+                        const type = consultationType.type
                         return (
                           <button
                             key={type}
@@ -908,7 +908,7 @@ export default function BookAppointment() {
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Doctor:</span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        Dr. {selectedDoctor?.specialization}
+                        Dr. {selectedDoctor?.doctorData?.specialization}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -938,7 +938,7 @@ export default function BookAppointment() {
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Fee:</span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        ₹{selectedDoctor?.consultationTypes?.find(ct => ct.type === appointmentData.type)?.fee || selectedDoctor?.consultationFee}
+                        ₹{selectedDoctor?.doctorData?.consultationTypes?.find(ct => ct.type === appointmentData.type)?.fee || selectedDoctor?.doctorData?.consultationFee}
                       </span>
                     </div>
                   </div>

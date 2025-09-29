@@ -28,6 +28,7 @@ import {
   Users,
   X
 } from 'lucide-react';
+import { adminAPI } from '../../services/api';
 
 const AdminSettings = () => {
   // Props destructuring (none for this component)

@@ -1,4 +1,5 @@
 import {useEffect, useState} from 'react'
+import {AlertCircle} from 'lucide-react'
 import {useAuth} from '../../contexts/AuthContext'
 import {patientAPI} from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'

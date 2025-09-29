@@ -48,19 +48,19 @@ const FindDoctor = () => {
         id: doctor.id,
         userId: {
           profile: {
-            firstName: doctor.profile.firstName || 'Unknown',
-            lastName: doctor.profile.lastName || 'Doctor'
+            firstName: doctor.profile?.firstName || 'Unknown',
+            lastName: doctor.profile?.lastName || 'Doctor'
           }
         },
-        specialization: doctor.specialization,
+        specialization: doctor.specialization || doctor.profile?.specialization || 'General',
         experience: doctor.experience || 0,
         consultationFee: doctor.consultationFee || 0,
-        languages: doctor.languages,
-        bio: doctor.bio,
-        consultationTypes: [{ type: 'video', fee: doctor.consultationFee || 0 }], // Default format
+        languages: doctor.languages || ['English'],
+        bio: doctor.bio || doctor.profile?.bio || 'Experienced doctor with expertise in the field.',
+        consultationTypes: doctor.consultationTypes || [{ type: 'video', fee: doctor.consultationFee || 0 }], // Default format
         rating: doctor.rating?.average || 0,
         _id: doctor.id,
-        isVerified: doctor.isVerified
+        isVerified: doctor.isVerified || false
       }));
       
       setDoctors(formattedDoctors);
@@ -73,7 +73,11 @@ const FindDoctor = () => {
   const loadFilterOptions = async () => {
     try {
       const response = await doctorsAPI.search({ limit: 1 })
-      setFilterOptions(response.data.filters)
+      setFilterOptions(response.data.filters || {
+        specializations: [],
+        languages: [],
+        consultationTypes: []
+      })
     } catch (error) {
       console.error('Error loading filter options:', error)
       // Fallback to generate filter options from registered doctors
@@ -85,6 +89,13 @@ const FindDoctor = () => {
           specializations,
           languages,
           consultationTypes: ['in_person', 'video', 'phone']
+        });
+      } else {
+        // Set default empty filter options if no fallback data available
+        setFilterOptions({
+          specializations: [],
+          languages: [],
+          consultationTypes: []
         });
       }
     }
@@ -365,20 +376,20 @@ const FindDoctor = () => {
                 <div className="p-6">
                   {/* Doctor Header */}
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Dr. {doctor.userId?.profile?.firstName} {doctor.userId?.profile?.lastName}
+                    Dr. {doctor.userId?.profile?.firstName || doctor.profile?.firstName || 'Unknown'} {doctor.userId?.profile?.lastName || doctor.profile?.lastName || 'Doctor'}
                   </h3>
-                  <p className="text-blue-600 font-medium">{doctor.specialization}</p>
-                  <p className="text-sm text-gray-600">{doctor._id}</p>
+                  <p className="text-blue-600 font-medium">{doctor.specialization || 'General'}</p>
+                  <p className="text-sm text-gray-600">{doctor._id || doctor.id || 'N/A'}</p>
 
                   {/* Doctor Info */}
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-600">
                       <Award className="w-4 h-4 mr-2" />
-                      {doctor.experience} years experience
+                      {doctor.experience || 0} years experience
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <DollarSign className="w-4 h-4 mr-2" />
-                      ₹{doctor.consultationFee} consultation fee
+                      ₹{doctor.consultationFee || 0} consultation fee
                     </div>
                     {doctor.languages && doctor.languages.length > 0 && (
                       <div className="flex items-center text-sm text-gray-600">
