@@ -75,8 +75,8 @@ router.put('/profile', [
       });
     }
 
-    const doctor = await Doctor.findOne({ userId: req.user._id });
-    if (!doctor) {
+    const user = await User.findById(req.user._id);
+    if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -85,17 +85,24 @@ router.put('/profile', [
 
     const { specialization, consultationFee, bio, languages, qualifications } = req.body;
 
-    if (specialization) doctor.specialization = specialization;
-    if (consultationFee !== undefined) doctor.consultationFee = consultationFee;
-    if (bio !== undefined) doctor.bio = bio;
-    if (languages) doctor.languages = languages;
-    if (qualifications) doctor.qualifications = qualifications;
+    if (specialization) user.doctorData.specialization = specialization;
+    if (consultationFee !== undefined) user.doctorData.consultationFee = consultationFee;
+    if (bio !== undefined) user.doctorData.bio = bio;
+    if (languages) user.doctorData.languages = languages;
+    if (qualifications) user.doctorData.qualifications = qualifications;
 
-    await doctor.save();
+    await user.save();
 
     res.json({
       message: 'Doctor profile updated successfully',
-      doctor
+      doctor: {
+        doctorId: user.doctorData.doctorId,
+        specialization: user.doctorData.specialization,
+        consultationFee: user.doctorData.consultationFee,
+        bio: user.doctorData.bio,
+        languages: user.doctorData.languages,
+        qualifications: user.doctorData.qualifications
+      }
     });
   } catch (error) {
     console.error('Update doctor profile error:', error);
@@ -287,9 +294,9 @@ router.put('/appointments/:id/status', [
     }
 
     const { status, notes } = req.body;
-    const doctor = await Doctor.findOne({ userId: req.user._id });
+    const user = await User.findById(req.user._id);
     
-    if (!doctor) {
+    if (!user || user.role !== 'doctor') {
       return res.status(404).json({
         message: 'Doctor profile not found',
         code: 'DOCTOR_NOT_FOUND'
@@ -298,7 +305,7 @@ router.put('/appointments/:id/status', [
 
     const appointment = await Appointment.findOne({
       _id: req.params.id,
-      doctorId: doctor._id
+      doctorId: user._id
     });
 
     if (!appointment) {

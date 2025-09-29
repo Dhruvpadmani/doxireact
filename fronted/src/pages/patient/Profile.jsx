@@ -1,13 +1,29 @@
 import {useEffect, useState} from 'react'
 import {AlertCircle} from 'lucide-react'
 import {useAuth} from '../../contexts/AuthContext'
-import {patientAPI} from '../../services/api'
+import {patientAPI, authAPI} from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 export default function Profile() {
     const [loading, setLoading] = useState(false)
     const [editing, setEditing] = useState(false)
-    const [profileData, setProfileData] = useState({})
+    const [profileData, setProfileData] = useState({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        dateOfBirth: '',
+        gender: '',
+        address: '',
+        medicalHistory: [],
+        allergies: [],
+        medications: [],
+        emergencyContact: {
+            name: '',
+            relationship: '',
+            phone: ''
+        }
+    })
     const [error, setError] = useState(null)
     const {user} = useAuth()
 
@@ -19,26 +35,55 @@ export default function Profile() {
 
     const loadProfile = async () => {
         setLoading(true)
+        setError(null) // Reset error when loading
         try {
-            const response = await patientAPI.getProfile()
-            const userData = response.data.user
+            // Try patient profile endpoint first, fall back to auth profile if needed
+            let response;
+            try {
+                response = await patientAPI.getProfile();
+            } catch (patientError) {
+                // If patient endpoint fails, try the general auth endpoint
+                console.warn('Patient profile endpoint failed, trying auth endpoint:', patientError.message);
+                response = await authAPI.getProfile();
+            }
+            
+            // Check if response data structure is as expected
+            let userData;
+            if (response.data && response.data.user) {
+                // Standard structure: { data: { user: { ... } } }
+                userData = response.data.user;
+            } else if (response.data && response.data.patient) {
+                // Patient API specific structure: { data: { patient: { ... } } }
+                userData = response.data.patient;
+            } else if (response.data && response.data.firstName) {
+                // Direct structure: { data: { firstName: ..., ... } }
+                userData = response.data;
+            } else if (response.data && typeof response.data === 'object' && 
+                      (response.data.firstName || response.data.lastName || response.data.email)) {
+                // Other object structure that contains user data
+                userData = response.data;
+            } else {
+                console.error('Unexpected API response structure:', response.data);
+                throw new Error('Invalid response structure from API');
+            }
+            
             setProfileData({
-                firstName: userData.profile?.firstName || '',
-                lastName: userData.profile?.lastName || '',
-                email: userData.email || '',
-                phone: userData.profile?.phone || '',
-                dateOfBirth: userData.profile?.dateOfBirth || '',
-                gender: userData.profile?.gender || '',
-                address: userData.profile?.address || '',
-                medicalHistory: userData.profile?.medicalHistory || [],
-                allergies: userData.profile?.allergies || [],
-                medications: userData.profile?.medications || [],
-                emergencyContact: userData.profile?.emergencyContact || {
+                firstName: userData.profile?.firstName || userData.firstName || '',
+                lastName: userData.profile?.lastName || userData.lastName || '',
+                email: userData.email || userData.profile?.email || '',
+                phone: userData.profile?.phone || userData.phone || '',
+                dateOfBirth: userData.profile?.dateOfBirth || userData.dateOfBirth || '',
+                gender: userData.profile?.gender || userData.gender || '',
+                address: userData.profile?.address || userData.address || '',
+                medicalHistory: userData.profile?.medicalHistory || userData.medicalHistory || [],
+                allergies: userData.profile?.allergies || userData.allergies || [],
+                medications: userData.profile?.medications || userData.medications || [],
+                emergencyContact: userData.profile?.emergencyContact || userData.emergencyContact || {
                     name: '',
                     relationship: '',
                     phone: ''
                 }
-            })
+            });
         } catch (error) {
             console.error('Error loading profile:', error)
             setError(error.response?.data?.message || 'Failed to load profile. Please try again.')

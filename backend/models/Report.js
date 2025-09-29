@@ -8,12 +8,12 @@ const reportSchema = new mongoose.Schema({
   },
   patientId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Patient',
+    ref: 'User',
     required: true
   },
   doctorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
+    ref: 'User',
     required: true
   },
   appointmentId: {
@@ -74,7 +74,7 @@ const reportSchema = new mongoose.Schema({
   },
   reviewedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor'
+    ref: 'User'
   },
   reviewedAt: Date,
   recommendations: String,
@@ -90,7 +90,7 @@ const reportSchema = new mongoose.Schema({
   sharedWith: [{
     doctorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Doctor'
+      ref: 'User'
     },
     sharedAt: {
       type: Date,

@@ -8,7 +8,7 @@ const emergencyRequestSchema = new mongoose.Schema({
   },
   patientId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Patient',
+    ref: 'User',
     required: true
   },
   type: {
@@ -63,7 +63,7 @@ const emergencyRequestSchema = new mongoose.Schema({
   assignedTo: {
     doctorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Doctor'
+      ref: 'User'
     },
     assignedAt: Date,
     responseTime: Number // in minutes

@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const reviewSchema = new mongoose.Schema({
   patientId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Patient',
+    ref: 'User',
     required: true
   },
   doctorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
+    ref: 'User',
     required: true
   },
   appointmentId: {
@@ -95,10 +95,10 @@ reviewSchema.index({ appointmentId: 1 }, { unique: true });
 // Update doctor rating when review is saved
 reviewSchema.post('save', async function() {
   if (this.status === 'approved') {
-    const Doctor = mongoose.model('Doctor');
-    await Doctor.findById(this.doctorId).then(doctor => {
-      if (doctor) {
-        doctor.updateRating();
+    const User = mongoose.model('User');
+    await User.findById(this.doctorId).then(user => {
+      if (user && user.doctorData) {
+        user.updateDoctorRating();
       }
     });
   }
@@ -106,10 +106,10 @@ reviewSchema.post('save', async function() {
 
 // Update doctor rating when review is deleted
 reviewSchema.post('deleteOne', { document: true, query: false }, async function() {
-  const Doctor = mongoose.model('Doctor');
-  await Doctor.findById(this.doctorId).then(doctor => {
-    if (doctor) {
-      doctor.updateRating();
+  const User = mongoose.model('User');
+  await User.findById(this.doctorId).then(user => {
+    if (user && user.doctorData) {
+      user.updateDoctorRating();
     }
   });
 });

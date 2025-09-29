@@ -74,7 +74,7 @@ const patientSchema = new mongoose.Schema({
     endDate: Date,
     prescribedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Doctor'
+      ref: 'User'
     }
   }],
   insurance: {

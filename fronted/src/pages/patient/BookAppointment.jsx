@@ -16,7 +16,7 @@ import {
   X
 } from 'lucide-react'
 import {useAuth} from '../../contexts/AuthContext'
-import {appointmentsAPI, doctorsAPI} from '../../services/api'
+import {appointmentsAPI, doctorsAPI, patientAPI} from '../../services/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 export default function BookAppointment() {
@@ -60,7 +60,7 @@ export default function BookAppointment() {
     const loadAppointments = async () => {
         try {
             setLoading(true)
-            const response = await appointmentsAPI.getAppointments()
+            const response = await patientAPI.getAppointments()
             setAppointments(response.data.appointments || [])
         } catch (error) {
             console.error('Error loading appointments:', error)
@@ -99,17 +99,7 @@ export default function BookAppointment() {
         type: appointmentData.type,
         reason: appointmentData.reason,
         symptoms: [],
-        notes: '',
-        patientDetails: {
-          medicalHistory: user.profile?.medicalHistory || [],
-          allergies: user.profile?.allergies || [],
-          medications: user.profile?.medications || [],
-          emergencyContact: user.profile?.emergencyContact || {
-            name: 'Not provided',
-            relationship: 'Not provided',
-            phone: 'Not provided'
-          }
-        }
+        duration: 30  // Add default duration
         }
 
         const response = await appointmentsAPI.book(appointmentPayload)

@@ -46,8 +46,25 @@ router.post('/book', authenticateToken, authorizeRole('patient'), [
     }
 
     // Check if doctor exists and is verified
-      const doctor = await User.findById(doctorId);
-      if (!doctor || doctor.role !== 'doctor' || !doctor.doctorData.isVerified) {
+    // First try to find by doctorId (which should now be a user ID)
+    const doctor = await User.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({
+        message: 'Doctor not found or not verified',
+        code: 'DOCTOR_NOT_FOUND'
+      });
+    }
+    
+    // Check if it's a doctor with proper role
+    if (doctor.role !== 'doctor') {
+      return res.status(404).json({
+        message: 'Doctor not found or not verified',
+        code: 'DOCTOR_NOT_FOUND'
+      });
+    }
+    
+    // Check if doctor is verified (ensure doctorData exists)
+    if (!doctor.doctorData || !doctor.doctorData.isVerified) {
       return res.status(404).json({
         message: 'Doctor not found or not verified',
         code: 'DOCTOR_NOT_FOUND'
@@ -160,7 +177,23 @@ router.get('/available-slots/:doctorId', [
     }
 
       const doctor = await User.findById(doctorId);
-      if (!doctor || doctor.role !== 'doctor' || !doctor.doctorData.isVerified) {
+      if (!doctor) {
+      return res.status(404).json({
+        message: 'Doctor not found or not verified',
+        code: 'DOCTOR_NOT_FOUND'
+      });
+    }
+    
+    // Check if it's a doctor with proper role
+    if (doctor.role !== 'doctor') {
+      return res.status(404).json({
+        message: 'Doctor not found or not verified',
+        code: 'DOCTOR_NOT_FOUND'
+      });
+    }
+    
+    // Check if doctor is verified (ensure doctorData exists)
+    if (!doctor.doctorData || !doctor.doctorData.isVerified) {
       return res.status(404).json({
         message: 'Doctor not found or not verified',
         code: 'DOCTOR_NOT_FOUND'
@@ -240,8 +273,8 @@ router.get('/available-slots/:doctorId', [
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id)
-        .populate('patientId', 'patientData.patientId')
-        .populate('doctorId', 'doctorData.doctorId doctorData.specialization');
+        .populate('patientId', 'profile.firstName profile.lastName patientData.patientId')
+        .populate('doctorId', 'profile.firstName profile.lastName doctorData.doctorId doctorData.specialization');
 
     if (!appointment) {
       return res.status(404).json({
